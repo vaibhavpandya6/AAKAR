@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     Starts the ai-dev-platform on Windows.
@@ -54,7 +54,7 @@ function Write-Info([string]$msg) {
     Write-Host "  [INFO] $msg" -ForegroundColor Cyan
 }
 function Write-Success([string]$msg) {
-    Write-Host "  ✓ $msg" -ForegroundColor Green
+    Write-Host "  [OK] $msg" -ForegroundColor Green
 }
 function Write-Warn([string]$msg) {
     Write-Host "  [WARN] $msg" -ForegroundColor Yellow
@@ -68,9 +68,9 @@ function Exit-WithError([string]$msg) {
 }
 
 Write-Host ""
-Write-Host "  ╔══════════════════════════════════════╗" -ForegroundColor Magenta
-Write-Host "  ║    ai-dev-platform  |  Windows       ║" -ForegroundColor Magenta
-Write-Host "  ╚══════════════════════════════════════╝" -ForegroundColor Magenta
+Write-Host "  +======================================+" -ForegroundColor Magenta
+Write-Host "  |    ai-dev-platform  |  Windows       |" -ForegroundColor Magenta
+Write-Host "  +======================================+" -ForegroundColor Magenta
 Write-Host ""
 
 # ============================================================================
@@ -160,7 +160,7 @@ if ($SkipInfra) {
         Exit-WithError "docker compose failed. Run: docker compose -f docker-compose.dev.yml logs"
     }
 
-    # ── Wait for PostgreSQL to pass health check ─────────────────────────────
+    # -- Wait for PostgreSQL to pass health check -----------------------------
     Write-Info "Waiting for PostgreSQL to become healthy..."
     $maxWait = 60   # seconds
     $elapsed = 0
@@ -183,7 +183,7 @@ if ($SkipInfra) {
     }
     Write-Success "PostgreSQL is healthy"
 
-    # ── Wait for Redis ────────────────────────────────────────────────────────
+    # -- Wait for Redis --------------------------------------------------------
     Write-Info "Waiting for Redis to become healthy..."
     $elapsed = 0
     $redisReady = $false
@@ -269,8 +269,12 @@ Write-Success "Database schema up to date"
 Write-Host ""
 Write-Info "Building sandbox Docker image (ai-sandbox)..."
 $sandboxDir = Join-Path $scriptRoot "sandbox"
-docker build -t ai-sandbox $sandboxDir 2>&1 | Tee-Object -FilePath (Join-Path $logsDir "sandbox-build.log") | Out-Null
-if ($LASTEXITCODE -ne 0) {
+$ErrorActionPreference = "Continue"
+$buildOutput = docker build -t ai-sandbox $sandboxDir 2>&1
+$buildResult = $LASTEXITCODE
+$buildOutput | Out-File -FilePath (Join-Path $logsDir "sandbox-build.log") -Encoding UTF8
+$ErrorActionPreference = "Stop"
+if ($buildResult -ne 0) {
     Exit-WithError "docker build failed. See logs\sandbox-build.log for details."
 }
 Write-Success "Sandbox image built (ai-sandbox)"
@@ -287,24 +291,24 @@ $env:PYTHONPATH = $scriptRoot
 
 $processIds = @()
 
-function Start-Service([string]$label, [string[]]$args, [string]$logName) {
+function Start-Service([string]$label, [string[]]$cmdArgs, [string]$logName) {
     $logFile = Join-Path $logsDir "$logName.log"
     $errFile = Join-Path $logsDir "$logName.err"
     $p = Start-Process `
         -FilePath $pythonExe `
-        -ArgumentList $args `
+        -ArgumentList $cmdArgs `
         -WorkingDirectory $scriptRoot `
         -RedirectStandardOutput $logFile `
         -RedirectStandardError  $errFile `
         -NoNewWindow `
         -PassThru
-    Write-Success "Started $label  (PID $($p.Id))  → logs\$logName.log"
+    Write-Success "Started $label  (PID $($p.Id))  -> logs\$logName.log"
     return $p.Id
 }
 
 # API (uvicorn via python -m uvicorn for reliable module resolution)
 $processIds += Start-Service "API server       " `
-    @("-m", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000") `
+    @("-m", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8080") `
     "api"
 
 # Orchestrator
@@ -329,7 +333,7 @@ $processIds += Start-Service "QAAgent          " `
     @("-m", "agents.qa_agent.worker") `
     "qa_agent"
 
-# ── Save PIDs so stop.ps1 can find them ─────────────────────────────────────
+# -- Save PIDs so stop.ps1 can find them -------------------------------------
 $pidsFile = Join-Path $scriptRoot ".pids"
 $processIds -join "`n" | Set-Content -Path $pidsFile -Encoding UTF8
 Write-Info "PIDs saved to .pids"
@@ -345,7 +349,7 @@ for ($i = 0; $i -lt 15; $i++) {
     Start-Sleep -Seconds 2
     $ErrorActionPreference = "Continue"
     try {
-        $resp = Invoke-WebRequest -Uri "http://localhost:8000/health" -UseBasicParsing -TimeoutSec 3
+        $resp = Invoke-WebRequest -Uri "http://localhost:8080/health" -UseBasicParsing -TimeoutSec 3
         if ($resp.StatusCode -eq 200) { $apiReady = $true; break }
     } catch { }
     $ErrorActionPreference = "Stop"
@@ -354,22 +358,22 @@ for ($i = 0; $i -lt 15; $i++) {
 
 Write-Host ""
 if ($apiReady) {
-    Write-Host "  ✅ All services started. API at http://localhost:8000" -ForegroundColor Green
+    Write-Host "  [SUCCESS] All services started. API at http://localhost:8080" -ForegroundColor Green
 } else {
     Write-Warn "API did not respond within 30s. It may still be starting."
     Write-Warn "Check: Get-Content logs\api.log -Tail 30"
 }
 
 Write-Host ""
-Write-Host "  ┌─────────────────────────────────────────────────────────┐" -ForegroundColor DarkCyan
-Write-Host "  │  Service logs:                                           │" -ForegroundColor DarkCyan
-Write-Host "  │    API:           logs\api.log                          │" -ForegroundColor DarkCyan
-Write-Host "  │    Orchestrator:  logs\orchestrator.log                 │" -ForegroundColor DarkCyan
-Write-Host "  │    BackendAgent:  logs\backend_agent.log                │" -ForegroundColor DarkCyan
-Write-Host "  │    FrontendAgent: logs\frontend_agent.log               │" -ForegroundColor DarkCyan
-Write-Host "  │    DatabaseAgent: logs\database_agent.log               │" -ForegroundColor DarkCyan
-Write-Host "  │    QAAgent:       logs\qa_agent.log                     │" -ForegroundColor DarkCyan
-Write-Host "  │                                                          │" -ForegroundColor DarkCyan
-Write-Host "  │  To stop:  .\stop.ps1                                   │" -ForegroundColor DarkCyan
-Write-Host "  └─────────────────────────────────────────────────────────┘" -ForegroundColor DarkCyan
+Write-Host "  +---------------------------------------------------------+" -ForegroundColor DarkCyan
+Write-Host "  |  Service logs:                                           |" -ForegroundColor DarkCyan
+Write-Host "  |    API:           logs\api.log                          |" -ForegroundColor DarkCyan
+Write-Host "  |    Orchestrator:  logs\orchestrator.log                 |" -ForegroundColor DarkCyan
+Write-Host "  |    BackendAgent:  logs\backend_agent.log                |" -ForegroundColor DarkCyan
+Write-Host "  |    FrontendAgent: logs\frontend_agent.log               |" -ForegroundColor DarkCyan
+Write-Host "  |    DatabaseAgent: logs\database_agent.log               |" -ForegroundColor DarkCyan
+Write-Host "  |    QAAgent:       logs\qa_agent.log                     |" -ForegroundColor DarkCyan
+Write-Host "  |                                                          |" -ForegroundColor DarkCyan
+Write-Host "  |  To stop:  .\stop.ps1                                   |" -ForegroundColor DarkCyan
+Write-Host "  +---------------------------------------------------------+" -ForegroundColor DarkCyan
 Write-Host ""

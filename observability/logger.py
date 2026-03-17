@@ -195,7 +195,7 @@ async def log_agent_action(
             file_path=(file_path or "")[:500] or None,
             status=status[:50],
             duration_ms=max(0, duration_ms),
-            metadata=metadata,
+            log_metadata=metadata,
             timestamp=datetime.now(timezone.utc),
         )
 

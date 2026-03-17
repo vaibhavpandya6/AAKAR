@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 
 import structlog
 from langchain_openai import ChatOpenAI
-from langchain.schema import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from config import settings
 from memory.long_term import LongTermMemory

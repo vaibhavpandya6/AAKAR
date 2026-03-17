@@ -19,167 +19,91 @@ depends_on = None
 def upgrade() -> None:
     """Create all initial tables."""
 
-    # Create ENUM types
-    user_role_enum = sa.Enum(
-        "admin", "developer", "viewer", name="userrole", create_type=False
-    )
-    user_role_enum.create(op.get_bind(), checkfirst=True)
-
-    project_status_enum = sa.Enum(
-        "CREATED",
-        "PLANNING",
-        "AWAITING_APPROVAL",
-        "IN_PROGRESS",
-        "QA",
-        "REVIEW",
-        "DELIVERED",
-        "FAILED",
-        name="projectstatus",
-        create_type=False,
-    )
-    project_status_enum.create(op.get_bind(), checkfirst=True)
-
-    task_skill_enum = sa.Enum(
-        "backend", "frontend", "database", "qa", name="taskskill", create_type=False
-    )
-    task_skill_enum.create(op.get_bind(), checkfirst=True)
-
-    task_status_enum = sa.Enum(
-        "PENDING",
-        "IN_PROGRESS",
-        "COMPLETE",
-        "FAILED",
-        name="taskstatus",
-        create_type=False,
-    )
-    task_status_enum.create(op.get_bind(), checkfirst=True)
+    # Create ENUM types using raw SQL with IF NOT EXISTS
+    op.execute("DO $$ BEGIN CREATE TYPE userrole AS ENUM ('admin', 'developer', 'viewer'); EXCEPTION WHEN duplicate_object THEN null; END $$;")
+    op.execute("DO $$ BEGIN CREATE TYPE projectstatus AS ENUM ('CREATED', 'PLANNING', 'AWAITING_APPROVAL', 'IN_PROGRESS', 'QA', 'REVIEW', 'DELIVERED', 'FAILED'); EXCEPTION WHEN duplicate_object THEN null; END $$;")
+    op.execute("DO $$ BEGIN CREATE TYPE taskskill AS ENUM ('backend', 'frontend', 'database', 'qa'); EXCEPTION WHEN duplicate_object THEN null; END $$;")
+    op.execute("DO $$ BEGIN CREATE TYPE taskstatus AS ENUM ('PENDING', 'IN_PROGRESS', 'COMPLETE', 'FAILED'); EXCEPTION WHEN duplicate_object THEN null; END $$;")
 
     # Create users table
-    op.create_table(
-        "users",
-        sa.Column("id", sa.UUID(), nullable=False),
-        sa.Column("email", sa.String(255), nullable=False),
-        sa.Column("password_hash", sa.String(255), nullable=False),
-        sa.Column(
-            "role",
-            user_role_enum,
-            nullable=False,
-            server_default="developer",
-        ),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.PrimaryKeyConstraint("id", name=op.f("pk_users")),
-        sa.UniqueConstraint("email", name=op.f("uq_users_email")),
-    )
-    op.create_index(op.f("ix_users_email"), "users", ["email"], unique=True)
+    op.execute("""
+        CREATE TABLE users (
+            id UUID PRIMARY KEY,
+            email VARCHAR(255) NOT NULL UNIQUE,
+            password_hash VARCHAR(255) NOT NULL,
+            role userrole NOT NULL DEFAULT 'developer',
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+        )
+    """)
+    op.execute("CREATE UNIQUE INDEX ix_users_email ON users (email)")
 
     # Create projects table
-    op.create_table(
-        "projects",
-        sa.Column("id", sa.UUID(), nullable=False),
-        sa.Column("user_id", sa.UUID(), nullable=False),
-        sa.Column("prompt", sa.Text(), nullable=False),
-        sa.Column(
-            "status",
-            project_status_enum,
-            nullable=False,
-            server_default="CREATED",
-        ),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["user_id"],
-            ["users.id"],
-            name=op.f("fk_projects_user_id_users"),
-            ondelete="CASCADE",
-        ),
-        sa.PrimaryKeyConstraint("id", name=op.f("pk_projects")),
-    )
-    op.create_index(op.f("ix_projects_user_id"), "projects", ["user_id"])
-    op.create_index(op.f("ix_projects_status"), "projects", ["status"])
+    op.execute("""
+        CREATE TABLE projects (
+            id UUID PRIMARY KEY,
+            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            prompt TEXT NOT NULL,
+            status projectstatus NOT NULL DEFAULT 'CREATED',
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+        )
+    """)
+    op.execute("CREATE INDEX ix_projects_user_id ON projects (user_id)")
+    op.execute("CREATE INDEX ix_projects_status ON projects (status)")
 
     # Create tasks table
-    op.create_table(
-        "tasks",
-        sa.Column("id", sa.UUID(), nullable=False),
-        sa.Column("project_id", sa.UUID(), nullable=False),
-        sa.Column("title", sa.String(255), nullable=False),
-        sa.Column("description", sa.Text(), nullable=False),
-        sa.Column("skill_required", task_skill_enum, nullable=False),
-        sa.Column(
-            "status",
-            task_status_enum,
-            nullable=False,
-            server_default="PENDING",
-        ),
-        sa.Column("assigned_agent", sa.String(255), nullable=True),
-        sa.Column("depends_on", sa.ARRAY(sa.UUID()), nullable=True),
-        sa.Column("retry_count", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["project_id"],
-            ["projects.id"],
-            name=op.f("fk_tasks_project_id_projects"),
-            ondelete="CASCADE",
-        ),
-        sa.PrimaryKeyConstraint("id", name=op.f("pk_tasks")),
-    )
-    op.create_index(op.f("ix_tasks_project_id"), "tasks", ["project_id"])
-    op.create_index(op.f("ix_tasks_status"), "tasks", ["status"])
+    op.execute("""
+        CREATE TABLE tasks (
+            id UUID PRIMARY KEY,
+            project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            title VARCHAR(255) NOT NULL,
+            description TEXT NOT NULL,
+            skill_required taskskill NOT NULL,
+            status taskstatus NOT NULL DEFAULT 'PENDING',
+            assigned_agent VARCHAR(255),
+            depends_on UUID[],
+            retry_count INTEGER NOT NULL DEFAULT 0,
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+        )
+    """)
+    op.execute("CREATE INDEX ix_tasks_project_id ON tasks (project_id)")
+    op.execute("CREATE INDEX ix_tasks_status ON tasks (status)")
 
     # Create agent_logs table
-    op.create_table(
-        "agent_logs",
-        sa.Column("id", sa.UUID(), nullable=False),
-        sa.Column("project_id", sa.UUID(), nullable=False),
-        sa.Column("task_id", sa.UUID(), nullable=True),
-        sa.Column("agent", sa.String(255), nullable=False),
-        sa.Column("action", sa.String(255), nullable=False),
-        sa.Column("file_path", sa.String(500), nullable=True),
-        sa.Column("status", sa.String(50), nullable=False),
-        sa.Column("duration_ms", sa.Integer(), nullable=False),
-        sa.Column("metadata", sa.JSON(), nullable=True),
-        sa.Column("timestamp", sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["project_id"],
-            ["projects.id"],
-            name=op.f("fk_agent_logs_project_id_projects"),
-            ondelete="CASCADE",
-        ),
-        sa.ForeignKeyConstraint(
-            ["task_id"],
-            ["tasks.id"],
-            name=op.f("fk_agent_logs_task_id_tasks"),
-            ondelete="SET NULL",
-        ),
-        sa.PrimaryKeyConstraint("id", name=op.f("pk_agent_logs")),
-    )
-    op.create_index(
-        op.f("ix_agent_logs_project_id"), "agent_logs", ["project_id"]
-    )
-    op.create_index(
-        op.f("ix_agent_logs_timestamp"), "agent_logs", ["timestamp"]
-    )
+    op.execute("""
+        CREATE TABLE agent_logs (
+            id UUID PRIMARY KEY,
+            project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            task_id UUID REFERENCES tasks(id) ON DELETE SET NULL,
+            agent VARCHAR(255) NOT NULL,
+            action VARCHAR(255) NOT NULL,
+            file_path VARCHAR(500),
+            status VARCHAR(50) NOT NULL,
+            duration_ms INTEGER NOT NULL,
+            metadata JSONB,
+            timestamp TIMESTAMP WITH TIME ZONE NOT NULL
+        )
+    """)
+    op.execute("CREATE INDEX ix_agent_logs_project_id ON agent_logs (project_id)")
+    op.execute("CREATE INDEX ix_agent_logs_timestamp ON agent_logs (timestamp)")
 
     # Create messages table
-    op.create_table(
-        "messages",
-        sa.Column("id", sa.UUID(), nullable=False),
-        sa.Column("message_id", sa.UUID(), nullable=False),
-        sa.Column("correlation_id", sa.String(255), nullable=False),
-        sa.Column("sender", sa.String(255), nullable=False),
-        sa.Column("recipient", sa.String(255), nullable=False),
-        sa.Column("message_type", sa.String(50), nullable=False),
-        sa.Column("payload", sa.JSON(), nullable=True),
-        sa.Column("timestamp", sa.DateTime(timezone=True), nullable=False),
-        sa.PrimaryKeyConstraint("id", name=op.f("pk_messages")),
-        sa.UniqueConstraint("message_id", name=op.f("uq_messages_message_id")),
-    )
-    op.create_index(op.f("ix_messages_message_id"), "messages", ["message_id"], unique=True)
-    op.create_index(
-        op.f("ix_messages_correlation_id"), "messages", ["correlation_id"]
-    )
+    op.execute("""
+        CREATE TABLE messages (
+            id UUID PRIMARY KEY,
+            message_id UUID NOT NULL UNIQUE,
+            correlation_id VARCHAR(255) NOT NULL,
+            sender VARCHAR(255) NOT NULL,
+            recipient VARCHAR(255) NOT NULL,
+            message_type VARCHAR(50) NOT NULL,
+            payload JSONB,
+            timestamp TIMESTAMP WITH TIME ZONE NOT NULL
+        )
+    """)
+    op.execute("CREATE UNIQUE INDEX ix_messages_message_id ON messages (message_id)")
+    op.execute("CREATE INDEX ix_messages_correlation_id ON messages (correlation_id)")
 
 
 def downgrade() -> None:

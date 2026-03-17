@@ -84,7 +84,9 @@ class User(Base):
     )
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[UserRole] = mapped_column(
-        SQLEnum(UserRole), nullable=False, default=UserRole.DEVELOPER
+        SQLEnum(UserRole, name="userrole", create_type=False),
+        nullable=False,
+        default=UserRole.DEVELOPER,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=datetime.utcnow
@@ -117,7 +119,9 @@ class Project(Base):
     )
     prompt: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[ProjectStatus] = mapped_column(
-        SQLEnum(ProjectStatus), nullable=False, default=ProjectStatus.CREATED
+        SQLEnum(ProjectStatus, name="projectstatus", create_type=False),
+        nullable=False,
+        default=ProjectStatus.CREATED,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=datetime.utcnow
@@ -162,10 +166,13 @@ class Task(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     skill_required: Mapped[TaskSkill] = mapped_column(
-        SQLEnum(TaskSkill), nullable=False
+        SQLEnum(TaskSkill, name="taskskill", create_type=False),
+        nullable=False,
     )
     status: Mapped[TaskStatus] = mapped_column(
-        SQLEnum(TaskStatus), nullable=False, default=TaskStatus.PENDING
+        SQLEnum(TaskStatus, name="taskstatus", create_type=False),
+        nullable=False,
+        default=TaskStatus.PENDING,
     )
     assigned_agent: Mapped[Optional[str]] = mapped_column(
         String(255), nullable=True
@@ -223,7 +230,7 @@ class AgentLog(Base):
     file_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     status: Mapped[str] = mapped_column(String(50), nullable=False)
     duration_ms: Mapped[int] = mapped_column(Integer, nullable=False)
-    metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    log_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=datetime.utcnow
     )

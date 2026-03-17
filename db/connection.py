@@ -1,6 +1,6 @@
 """Async SQLAlchemy engine and session management."""
 
-import logging
+import structlog
 from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import (
@@ -13,7 +13,7 @@ from sqlalchemy.pool import NullPool
 from config import settings
 from db.models import Base
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class DatabaseManager:

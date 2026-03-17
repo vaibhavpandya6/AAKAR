@@ -4,7 +4,7 @@ import logging
 from enum import Enum
 from typing import Optional
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db import User, get_db
@@ -19,6 +19,38 @@ class Role(str, Enum):
     ADMIN = "admin"
     DEVELOPER = "developer"
     VIEWER = "viewer"
+
+
+async def get_bearer_token(authorization: Optional[str] = Header(None)) -> str:
+    """Extract bearer token from Authorization header.
+
+    Args:
+        authorization: Authorization header value.
+
+    Returns:
+        Bearer token string.
+
+    Raises:
+        HTTPException: 403 if token is missing or malformed.
+    """
+    if not authorization:
+        logger.warning("Authorization header missing")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    parts = authorization.split()
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        logger.warning("Invalid authorization header format")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid authorization header",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return parts[1]
 
 
 async def get_current_user(
@@ -54,38 +86,6 @@ async def get_current_user(
 
     logger.debug("Current user authenticated", user_id=user_id)
     return user_id  # type: ignore
-
-
-async def get_bearer_token(authorization: Optional[str] = None) -> str:
-    """Extract bearer token from Authorization header.
-
-    Args:
-        authorization: Authorization header value.
-
-    Returns:
-        Bearer token string.
-
-    Raises:
-        HTTPException: 403 if token is missing or malformed.
-    """
-    if not authorization:
-        logger.warning("Authorization header missing")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authenticated",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    parts = authorization.split()
-    if len(parts) != 2 or parts[0].lower() != "bearer":
-        logger.warning("Invalid authorization header format")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Invalid authorization header",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    return parts[1]
 
 
 def require_role(*roles: Role):

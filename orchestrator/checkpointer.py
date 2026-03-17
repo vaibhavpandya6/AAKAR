@@ -61,6 +61,8 @@ def _build_sqlite_checkpointer() -> AnyCheckpointer:
     Returns:
         SqliteSaver instance connected to ``checkpoints.db``.
     """
+    import sqlite3
+
     try:
         from langgraph.checkpoint.sqlite import SqliteSaver  # type: ignore[import]
     except ImportError as exc:
@@ -69,7 +71,8 @@ def _build_sqlite_checkpointer() -> AnyCheckpointer:
             "Install with: pip install 'langgraph[sqlite]'"
         ) from exc
 
-    saver = SqliteSaver.from_conn_string("checkpoints.db")
+    conn = sqlite3.connect("checkpoints.db", check_same_thread=False)
+    saver = SqliteSaver(conn)
     logger.info("sqlite_checkpointer_created", path="checkpoints.db")
     return saver
 

@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     Stops all ai-dev-platform services started by start.ps1.
@@ -32,7 +32,7 @@ if (-not $scriptRoot) {
 Set-Location $scriptRoot
 
 function Write-Info([string]$msg)    { Write-Host "  [INFO] $msg" -ForegroundColor Cyan }
-function Write-Success([string]$msg) { Write-Host "  ✓ $msg" -ForegroundColor Green }
+function Write-Success([string]$msg) { Write-Host "  [OK] $msg" -ForegroundColor Green }
 function Write-Warn([string]$msg)    { Write-Host "  [WARN] $msg" -ForegroundColor Yellow }
 
 Write-Host ""
@@ -114,5 +114,5 @@ if ($StopInfra) {
 }
 
 Write-Host ""
-Write-Host "  ✅ All services stopped." -ForegroundColor Green
+Write-Host "  [OK] All services stopped." -ForegroundColor Green
 Write-Host ""

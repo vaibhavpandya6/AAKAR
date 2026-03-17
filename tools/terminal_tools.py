@@ -21,7 +21,7 @@ DANGEROUS_PATTERNS = [
     r"mkfs\.",
     r"sudo\s+",
     r"su\s+-",
-    r":(){.*:";  # fork bomb
+    r":(){.*:",  # fork bomb
 ]
 
 # Curl whitelist for external tools

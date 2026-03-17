@@ -10,7 +10,10 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from alembic import context
 from config import settings
-from db.models import Base
+
+# Don't import models to avoid ENUM auto-creation conflicts
+# Models are only needed for autogenerate, not for running migrations
+# from db.models import Base
 
 # this is the Alembic Config object, which provides
 # the values of the [alembic] section of the .ini file
@@ -25,11 +28,9 @@ if config.config_file_name is not None:
 
 logger = logging.getLogger("alembic.env")
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-target_metadata = Base.metadata
+# For migrations that use raw SQL, we don't need target_metadata
+# Set to None to avoid importing models and triggering ENUM issues
+target_metadata = None
 
 
 def run_migrations_offline() -> None:
@@ -46,23 +47,19 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def do_run_async_migrations(engine: Connection) -> None:
-    """Execute migrations inside async context."""
+def do_run_migrations(connection: Connection) -> None:
+    """Execute migrations with the given connection."""
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+    )
 
-    def upgrade(rev, context):
-        context.configure(connection=engine, target_metadata=target_metadata)
-
-        with context.begin_transaction():
-            context.run_migrations()
-
-    asyncio.run(upgrade(None, context))
+    with context.begin_transaction():
+        context.run_migrations()
 
 
 async def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
-
-    configuration = config.get_section(config.config_ini_section)
-    configuration["sqlalchemy.url"] = settings.postgres_url
 
     connectable = create_async_engine(
         settings.postgres_url,
@@ -70,7 +67,7 @@ async def run_migrations_online() -> None:
     )
 
     async with connectable.connect() as connection:
-        await connection.run_sync(do_run_async_migrations)
+        await connection.run_sync(do_run_migrations)
 
     await connectable.dispose()
 

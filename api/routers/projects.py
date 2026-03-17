@@ -295,7 +295,7 @@ async def get_project_logs(
             file_path=row.file_path,
             status=row.status,
             duration_ms=row.duration_ms,
-            metadata=row.metadata,
+            metadata=row.log_metadata,
             timestamp=row.timestamp,
         )
         for row in rows
