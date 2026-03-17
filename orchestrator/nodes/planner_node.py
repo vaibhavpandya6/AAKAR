@@ -1,7 +1,8 @@
 """Planner node — decomposes user prompt into a validated task DAG.
 
-Calls OpenAI in JSON mode, validates the returned tasks against the DAG
-schema (required fields + no cycles), and returns the plan into state.
+Calls Groq (Llama 70B) with JSON-enforced prompts, validates the returned
+tasks against the DAG schema (required fields + no cycles), and returns the
+plan into state.
 """
 
 import json
@@ -9,8 +10,8 @@ from typing import Any
 
 import structlog
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
 
+from config import create_json_mode_llm
 from orchestrator.state import PlatformState, ProjectStatus
 from task_system.task_graph import InvalidDAGError, TaskGraph
 
@@ -19,8 +20,6 @@ logger = structlog.get_logger()
 # ---------------------------------------------------------------------------
 # LLM setup
 # ---------------------------------------------------------------------------
-
-_PLANNER_MODEL = "gpt-4o"
 
 # Fields every task dict must carry
 _REQUIRED_TASK_FIELDS = {"id", "title", "description", "skill_required", "acceptance_criteria"}
@@ -33,7 +32,11 @@ _SYSTEM_PROMPT = """\
 You are a senior software architect planning a multi-agent development project.
 Analyse the user requirement and decompose it into a list of concrete development tasks.
 
-RESPONSE FORMAT — return ONLY valid JSON, no markdown fences:
+**CRITICAL:** You MUST respond with ONLY valid JSON. No markdown code fences (```json),
+no explanations before or after the JSON, no comments inside the JSON. Start your response
+with { and end with }. This is mandatory.
+
+RESPONSE FORMAT — JSON only:
 {
   "project_summary": "<1–3 sentence description of what will be built>",
   "tasks": [
@@ -56,6 +59,8 @@ Rules:
 - Maximum 20 tasks total.
 - acceptance_criteria must be a non-empty list of strings.
 - depends_on must be an array (use [] if no dependencies).
+
+Remember: Output ONLY the JSON object. Nothing else.
 """
 
 _USER_TEMPLATE = """\
@@ -82,8 +87,8 @@ async def planner_node(state: PlatformState) -> dict[str, Any]:
     """Decompose the user prompt into a validated task DAG.
 
     Reads ``original_prompt`` and optionally ``plan_feedback`` from state.
-    Calls OpenAI with JSON mode, validates the response against the task
-    schema and DAG constraints, then returns the plan fields.
+    Calls Groq (Llama 70B) with JSON-enforced prompts, validates the response
+    against the task schema and DAG constraints, then returns the plan fields.
 
     Args:
         state: Current PlatformState.
@@ -114,13 +119,9 @@ async def planner_node(state: PlatformState) -> dict[str, Any]:
         feedback_section=feedback_section,
     )
 
-    # ── Call LLM (JSON mode) ────────────────────────────────────────────────
+    # ── Call LLM (Groq with JSON enforcement via prompt) ────────────────────
     try:
-        llm = ChatOpenAI(
-            model=_PLANNER_MODEL,
-            model_kwargs={"response_format": {"type": "json_object"}},
-            temperature=0,
-        )
+        llm = create_json_mode_llm()
         response = await llm.ainvoke(
             [SystemMessage(content=_SYSTEM_PROMPT), HumanMessage(content=user_content)]
         )

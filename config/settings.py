@@ -20,10 +20,12 @@ class Settings(BaseSettings):
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
     jwt_expire_minutes: int = Field(default=60, alias="JWT_EXPIRE_MINUTES")
 
-    # OpenAI Configuration
-    openai_api_key: str = Field(
-        default="sk-placeholder-your-openai-api-key", alias="OPENAI_API_KEY"
+    # LLM Configuration (Groq)
+    groq_api_key: str = Field(
+        default="gsk-placeholder-your-groq-api-key", alias="GROQ_API_KEY"
     )
+    llm_model: str = Field(default="llama-3.1-70b-versatile", alias="LLM_MODEL")
+    llm_temperature: float = Field(default=0.0, alias="LLM_TEMPERATURE")
 
     # Database Configuration
     postgres_url: str = Field(
@@ -100,13 +102,13 @@ def validate_secrets() -> None:
 
     placeholder_values = {
         "your-super-secret-key-change-in-production": "APP_SECRET_KEY",
-        "sk-placeholder-your-openai-api-key": "OPENAI_API_KEY",
+        "gsk-placeholder-your-groq-api-key": "GROQ_API_KEY",
         "your-service-token-secret-change-in-production": "SERVICE_TOKEN_SECRET",
     }
 
     critical_secrets = {
         "app_secret_key": "APP_SECRET_KEY",
-        "openai_api_key": "OPENAI_API_KEY",
+        "groq_api_key": "GROQ_API_KEY",
         "service_token_secret": "SERVICE_TOKEN_SECRET",
         "postgres_url": "POSTGRES_URL",
         "redis_url": "REDIS_URL",

@@ -2,15 +2,16 @@
 
 Instantiates all agent dependencies from their singletons, creates a
 synthetic "review" task covering all project files, dispatches to
-ReviewerAgent, and maps the approved / rejected outcome back to state.
+ReviewerAgent with Groq (Llama 70B), and maps the approved/rejected
+outcome back to state.
 """
 
 from typing import Any
 
 import structlog
-from langchain_openai import ChatOpenAI
 
 from agents.reviewer_agent.agent import ReviewerAgent
+from config import create_llm
 from memory.long_term import get_long_term_memory
 from memory.vector_store import get_vector_store
 from messaging.message_bus import get_message_bus
@@ -19,7 +20,6 @@ from workspace_manager.manager import get_workspace_manager
 
 logger = structlog.get_logger()
 
-_REVIEWER_MODEL = "gpt-4o"
 _REVIEWER_AGENT_NAME = "reviewer-agent"
 
 
@@ -72,7 +72,7 @@ async def reviewer_node(state: PlatformState) -> dict[str, Any]:
 
     # ── Instantiate ReviewerAgent with singletons ────────────────────────────
     try:
-        llm = ChatOpenAI(model=_REVIEWER_MODEL, temperature=0)
+        llm = create_llm()
         vector_store = get_vector_store()
         long_term_memory = get_long_term_memory()
         message_bus = await get_message_bus()
