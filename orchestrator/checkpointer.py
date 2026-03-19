@@ -56,24 +56,23 @@ def get_checkpointer() -> AnyCheckpointer:
 
 
 def _build_sqlite_checkpointer() -> AnyCheckpointer:
-    """Build a SQLite-backed checkpointer.
+    """Build a memory-backed checkpointer for development.
+
+    Note: For production, use PostgreSQL checkpointer instead.
 
     Returns:
-        SqliteSaver instance connected to ``checkpoints.db``.
+        MemorySaver instance (in-memory checkpointing).
     """
-    import sqlite3
-
     try:
-        from langgraph.checkpoint.sqlite import SqliteSaver  # type: ignore[import]
+        from langgraph.checkpoint.memory import MemorySaver  # type: ignore[import]
     except ImportError as exc:
         raise ImportError(
-            "langgraph[sqlite] is required for SQLite checkpointing.  "
-            "Install with: pip install 'langgraph[sqlite]'"
+            "langgraph is required for checkpointing. "
+            "Install with: pip install langgraph"
         ) from exc
 
-    conn = sqlite3.connect("checkpoints.db", check_same_thread=False)
-    saver = SqliteSaver(conn)
-    logger.info("sqlite_checkpointer_created", path="checkpoints.db")
+    saver = MemorySaver()
+    logger.info("memory_checkpointer_created", note="Using in-memory checkpointer for development")
     return saver
 
 

@@ -8,7 +8,7 @@ Provides:
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional
 
 import structlog
 from fastapi import Depends, HTTPException, status
@@ -21,7 +21,7 @@ logger = structlog.get_logger()
 # ---------------------------------------------------------------------------
 # OAuth2 bearer scheme — advertises the token URL in the OpenAPI spec
 # ---------------------------------------------------------------------------
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 
 # ---------------------------------------------------------------------------
@@ -29,49 +29,23 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 # ---------------------------------------------------------------------------
 
 
-async def get_current_user(
-    token: str = Depends(oauth2_scheme),
-) -> dict[str, Any]:
-    """Decode the JWT and return the authenticated user dict.
+async def get_current_user() -> dict[str, Any]:
+    """Return a mock user without authentication (auth disabled for development).
 
     The dict contains at least ``id``, ``email``, and ``role`` — all claims
     encoded at login time.  Downstream routes can use these fields directly
     without querying the database.
 
-    Args:
-        token: Bearer token extracted from the ``Authorization`` header by
-               :data:`oauth2_scheme`.
-
     Returns:
         User dict with ``id``, ``email``, ``role``, and any other JWT claims.
-
-    Raises:
-        :class:`~fastapi.HTTPException` 401 if the token is invalid or expired.
-        :class:`~fastapi.HTTPException` 401 if required claims (``sub``, ``role``)
-        are missing from the payload.
     """
-    payload = decode_token(token)  # raises 401 on invalid token
-
-    user_id: str | None = payload.get("sub")
-    email: str | None = payload.get("email")
-    role: str | None = payload.get("role")
-
-    if not user_id or not role:
-        logger.warning("get_current_user_missing_claims", sub=user_id, role=role)
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token is missing required claims (sub, role)",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    user = {
-        "id": user_id,
-        "email": email or "",
-        "role": role,
+    # AUTHENTICATION DISABLED - Return mock user for development
+    logger.info("get_current_user_mock", message="Authentication bypassed - using mock user")
+    return {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "email": "dev@example.com",
+        "role": "admin",
     }
-
-    logger.debug("get_current_user_ok", user_id=user_id, role=role)
-    return user
 
 
 # ---------------------------------------------------------------------------

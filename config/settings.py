@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     groq_api_key: str = Field(
         default="gsk-placeholder-your-groq-api-key", alias="GROQ_API_KEY"
     )
-    llm_model: str = Field(default="llama-3.1-70b-versatile", alias="LLM_MODEL")
+    llm_model: str = Field(default="llama-3.3-70b-versatile", alias="LLM_MODEL")
     llm_temperature: float = Field(default=0.0, alias="LLM_TEMPERATURE")
 
     # Database Configuration

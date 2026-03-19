@@ -21,8 +21,8 @@ def create_llm(
 
     Args:
         model: Groq model name (default: from settings.llm_model).
-               Available models: llama-3.1-70b-versatile, llama-3.1-8b-instant,
-               mixtral-8x7b-32768, gemma-7b-it
+               Available models: llama-3.3-70b-versatile, llama-3.1-8b-instant,
+               mixtral-8x7b-32768, gemma2-9b-it
         temperature: Sampling temperature 0.0-1.0 (default: from settings.llm_temperature).
         streaming: Enable streaming responses (default: False).
         **kwargs: Additional arguments passed to ChatGroq constructor.

@@ -18,7 +18,7 @@ copy .env.example .env
 .\start.bat
 # or: .\start.ps1
 
-# 4. After "✅ All services started", the API is at http://localhost:8000
+# 4. After "✅ All services started", the API is at http://localhost:8080
 # See "How to use" section below for next steps.
 ```
 
@@ -188,12 +188,12 @@ sudo usermod -aG docker $USER   # Add your user to docker group (requires logout
      - Build the sandbox Docker image
      - Start 6 background services (API, orchestrator, 4 agents)
 
-   - When you see **"✅ All services started. API at http://localhost:8000"**, you're ready!
+   - When you see **"✅ All services started. API at http://localhost:8080"**, you're ready!
    - Service logs are written to the `logs/` directory
 
 5. **Verify the setup**
    ```powershell
-   curl http://localhost:8000/health
+   curl http://localhost:8080/health
    ```
 
 #### Stopping (Windows)
@@ -274,12 +274,12 @@ This will:
 - Build the sandbox Docker image
 - Start 6 background services (API, orchestrator, 4 agent workers)
 
-When you see the message **"✅ All services started. API at http://localhost:8000"**, the platform is ready.
+When you see the message **"✅ All services started. API at http://localhost:8080"**, the platform is ready.
 
 ### 5. Verify everything is working
 
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8080/health
 ```
 
 Should return:
@@ -309,7 +309,7 @@ Should return:
 #### 1. Register a user
 
 ```bash
-TOKEN=$(curl -s -X POST http://localhost:8000/auth/register \
+TOKEN=$(curl -s -X POST http://localhost:8080/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "email": "dev@example.com",
@@ -323,7 +323,7 @@ echo "Token: $TOKEN"
 #### 2. Create a project
 
 ```bash
-PROJECT=$(curl -s -X POST http://localhost:8000/projects/create \
+PROJECT=$(curl -s -X POST http://localhost:8080/projects/create \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -338,7 +338,7 @@ The orchestrator immediately starts planning. This takes ~30–60 seconds.
 #### 3. View the plan
 
 ```bash
-curl -s -X GET "http://localhost:8000/projects/$PROJECT/plan" \
+curl -s -X GET "http://localhost:8080/projects/$PROJECT/plan" \
   -H "Authorization: Bearer $TOKEN" | jq '.'
 ```
 
@@ -373,7 +373,7 @@ Returns a `TaskDAGResponse` with all planned tasks:
 #### 4. Approve the plan (Human-in-the-Loop)
 
 ```bash
-curl -s -X POST "http://localhost:8000/projects/$PROJECT/plan/approve" \
+curl -s -X POST "http://localhost:8080/projects/$PROJECT/plan/approve" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -398,7 +398,7 @@ The graph continues: tasks are routed to agents based on skill, agents execute t
 If you reject the plan instead:
 
 ```bash
-curl -s -X POST "http://localhost:8000/projects/$PROJECT/plan/approve" \
+curl -s -X POST "http://localhost:8080/projects/$PROJECT/plan/approve" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -423,7 +423,7 @@ The planner node re-runs with your feedback context, generating a revised plan. 
 Poll this endpoint to watch progress:
 
 ```bash
-curl -s -X GET "http://localhost:8000/projects/$PROJECT/status" \
+curl -s -X GET "http://localhost:8080/projects/$PROJECT/status" \
   -H "Authorization: Bearer $TOKEN" | jq '.'
 ```
 
@@ -459,15 +459,15 @@ Returns:
 
 ```bash
 # List all files in the project workspace
-curl -s -X GET "http://localhost:8000/projects/$PROJECT/files" \
+curl -s -X GET "http://localhost:8080/projects/$PROJECT/files" \
   -H "Authorization: Bearer $TOKEN" | jq '.'
 
 # Read a specific file
-curl -s -X GET "http://localhost:8000/projects/$PROJECT/files/backend/server.js" \
+curl -s -X GET "http://localhost:8080/projects/$PROJECT/files/backend/server.js" \
   -H "Authorization: Bearer $TOKEN" | jq '.'
 
 # View execution logs (filtered by agent, action, status, time range)
-curl -s -X GET "http://localhost:8000/projects/$PROJECT/logs?agent=backend_agent&status=success&limit=10" \
+curl -s -X GET "http://localhost:8080/projects/$PROJECT/logs?agent=backend_agent&status=success&limit=10" \
   -H "Authorization: Bearer $TOKEN" | jq '.'
 ```
 
@@ -568,7 +568,7 @@ docker build . -f Dockerfile.sandbox -t ai-sandbox:py \
 
 The platform runs **5–6 long-lived processes** on your machine:
 
-1. **API** (uvicorn, port 8000)
+1. **API** (uvicorn, port 8080)
 2. **Orchestrator** (single-threaded async worker)
 3. **BackendAgent** (worker listening to Redis Streams)
 4. **FrontendAgent** (worker)
@@ -638,7 +638,7 @@ When an agent performs an action (e.g., write a file, run a command), the `log_a
 This allows querying historical actions:
 
 ```bash
-curl -s http://localhost:8000/projects/$PROJECT/logs?agent=backend_agent&status=success | jq '.entries[] | {action, duration_ms, file_path}'
+curl -s http://localhost:8080/projects/$PROJECT/logs?agent=backend_agent&status=success | jq '.entries[] | {action, duration_ms, file_path}'
 ```
 
 ## Rollback
@@ -655,7 +655,7 @@ git tag -l
 ### Rollback to a specific tag
 
 ```bash
-curl -s -X POST http://localhost:8000/projects/$PROJECT/rollback \
+curl -s -X POST http://localhost:8080/projects/$PROJECT/rollback \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{

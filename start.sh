@@ -167,8 +167,8 @@ start_services() {
     log_info "Starting all services as background processes..."
 
     # API server
-    log_info "  → Starting API (port 8000)..."
-    uvicorn api.main:app --host 0.0.0.0 --port 8000 > /tmp/api.log 2>&1 &
+    log_info "  → Starting API (port 8080)..."
+    uvicorn api.main:app --host 0.0.0.0 --port 8080 > /tmp/api.log 2>&1 &
     PIDS+=($!)
 
     # Orchestrator worker
@@ -197,13 +197,13 @@ start_services() {
     sleep 2
 
     # Check if API is responding
-    if curl -s http://localhost:8000/health > /dev/null 2>&1; then
+    if curl -s http://localhost:8080/health > /dev/null 2>&1; then
         log_success "API is responding"
     else
         log_warning "API not yet responding (give it 5-10 seconds to start...)"
     fi
 
-    log_success "All services started. API at http://localhost:8000"
+    log_success "All services started. API at http://localhost:8080"
 }
 
 # ============================================================================

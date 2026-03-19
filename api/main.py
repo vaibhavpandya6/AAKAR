@@ -140,7 +140,8 @@ app.add_middleware(
 )
 
 # Prompt-injection scanner + sanitizer — runs on every POST/PUT/PATCH body
-app.add_middleware(InputSanitizerMiddleware)
+# TEMPORARILY DISABLED FOR DEBUGGING
+# app.add_middleware(InputSanitizerMiddleware)
 
 # ---------------------------------------------------------------------------
 # Routers

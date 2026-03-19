@@ -26,7 +26,7 @@ RUN npm install -g \
     dotenv
 
 # Install common Python packages
-RUN pip3 install --no-cache-dir \
+RUN pip3 install --break-system-packages --no-cache-dir \
     requests \
     flask \
     pytest
@@ -42,6 +42,6 @@ USER node
 
 # Environment variables
 ENV HOME=/home/node
-ENV PYTHONPATH=/home/node/.local/lib/python3.11/site-packages
+ENV PYTHONPATH=/home/node/.local/lib/python3.12/site-packages
 
 # No CMD - command is passed at runtime by docker run
