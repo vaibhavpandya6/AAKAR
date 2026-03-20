@@ -26,6 +26,7 @@ from api.schemas.models import (
 )
 from db.connection import get_db
 from db.models import AgentLog, Project
+from memory.vector_store import VectorStore
 from db.models import ProjectStatus as DBProjectStatus
 from orchestrator.checkpointer import load_state
 from orchestrator.state import initial_state
@@ -100,6 +101,21 @@ async def create_project(
     except Exception as exc:
         logger.error("create_project_workspace_failed", project_id=str(project_id), error=str(exc))
         # Non-fatal at this stage — the graph will create it if missing
+
+    # ── 2b. Warm RAG index before graph starts ─────────────────────────────
+    try:
+        indexed_chunks = await VectorStore().index_workspace(str(project_id))
+        logger.info(
+            "create_project_rag_warmup_complete",
+            project_id=str(project_id),
+            indexed_chunks=indexed_chunks,
+        )
+    except Exception as exc:
+        logger.warning(
+            "create_project_rag_warmup_failed",
+            project_id=str(project_id),
+            error=str(exc),
+        )
 
     # ── 3. Start graph as background task ───────────────────────────────────
     graph = getattr(request.app.state, "graph", None)

@@ -6,6 +6,7 @@ from typing import Any
 
 import structlog
 
+from memory.vector_store import VectorStore
 from orchestrator.state import PlatformState, ProjectStatus
 from task_system.task_graph import InvalidDAGError, TaskGraph
 from task_system.task_queue import TaskQueue
@@ -54,6 +55,22 @@ async def router_node(state: PlatformState) -> dict[str, Any]:
             "error_message": f"DAG validation failed in router: {exc}",
             "project_status": ProjectStatus.FAILED,
         }
+
+    # ── Warm RAG index for existing workspace files ─────────────────────────
+    if project_id:
+        try:
+            indexed_chunks = await VectorStore().index_workspace(project_id)
+            logger.info(
+                "router_rag_warmup_complete",
+                project_id=project_id,
+                indexed_chunks=indexed_chunks,
+            )
+        except Exception as exc:
+            logger.warning(
+                "router_rag_warmup_failed",
+                project_id=project_id,
+                error=str(exc),
+            )
 
     # ── Compute first-wave ready tasks ────────────────────────────────────────
     # No tasks are completed yet on first entry; pass empty list.
