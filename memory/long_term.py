@@ -1,6 +1,5 @@
 """Long-term learning from bug fixes and errors."""
 
-import logging
 from typing import List, Optional
 
 import chromadb
@@ -9,8 +8,7 @@ import structlog
 from config import settings
 from chromadb.config import Settings
 
-logger = logging.getLogger(__name__)
-struct_logger = structlog.get_logger()
+logger = structlog.get_logger()
 
 
 class LongTermMemory:
@@ -68,7 +66,7 @@ class LongTermMemory:
             Exception: If storage fails.
         """
         try:
-            await struct_logger.ainfo(
+            await logger.ainfo(
                 "fix_storage_started",
                 task_id=task_id,
                 agent=agent,
@@ -92,7 +90,7 @@ class LongTermMemory:
                 ],
             )
 
-            await struct_logger.ainfo(
+            await logger.ainfo(
                 "fix_storage_completed",
                 task_id=task_id,
                 memory_id=memory_id,
@@ -128,7 +126,7 @@ class LongTermMemory:
             - error_type: Classified error type
         """
         try:
-            await struct_logger.ainfo(
+            await logger.ainfo(
                 "fix_retrieval_started",
                 error_sample=error[:100],
                 top_k=top_k,
@@ -159,7 +157,7 @@ class LongTermMemory:
                     }
                 )
 
-            await struct_logger.ainfo(
+            await logger.ainfo(
                 "fix_retrieval_completed",
                 results=len(fixes),
                 top_similarity=fixes[0]["similarity_score"] if fixes else 0,

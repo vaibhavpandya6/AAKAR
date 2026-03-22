@@ -170,7 +170,10 @@ class TaskQueue:
     ) -> Optional[Dict[str, Any]]:
         """Pop the next pending task for an agent.
 
-        Reads one undelivered message from the agent's stream using XREADGROUP.
+        First attempts to reclaim any messages stuck in pending state from crashed
+        workers using XAUTOCLAIM. If none found, reads new undelivered messages
+        using XREADGROUP.
+
         Does NOT acknowledge — the agent must call :meth:`mark_complete` or
         :meth:`mark_failed` to ack.
 
@@ -191,10 +194,58 @@ class TaskQueue:
 
         await self._ensure_consumer_group(stream_key)
 
+        # Step 1: Try to reclaim stuck pending messages (older than 30 seconds)
+        # This handles crashed/killed workers gracefully
+        try:
+            autoclaim_result = await r.xautoclaim(
+                stream_key,
+                _GROUP_NAME,
+                agent_name,
+                min_idle_time=30000,  # 30 seconds in milliseconds
+                start_id="0-0",
+                count=1,
+            )
+
+            # xautoclaim returns (next_id, [messages], deleted_ids)
+            # In redis-py: autoclaim_result is a tuple (start_id, claimed_messages)
+            if len(autoclaim_result) >= 2:
+                claimed_messages = autoclaim_result[1]
+                if claimed_messages:
+                    redis_id, raw_data = claimed_messages[0]
+                    task = self._deserialise_task(raw_data)
+                    task["_redis_id"] = redis_id
+
+                    # Update status to IN_PROGRESS
+                    project_id = task.get("project_id", "")
+                    if project_id:
+                        await self._set_task_status(
+                            project_id,
+                            str(task.get("id", "")),
+                            STATUS_IN_PROGRESS,
+                            extra={"reclaimed_by": agent_name, "redis_id": redis_id},
+                        )
+
+                    await logger.ainfo(
+                        "task_reclaimed",
+                        agent=agent_name,
+                        task_id=task.get("id"),
+                        redis_id=redis_id,
+                    )
+                    return task
+        except Exception as exc:
+            # XAUTOCLAIM may not be supported in older Redis versions
+            await logger.awarning(
+                "xautoclaim_failed",
+                agent=agent_name,
+                error=str(exc),
+                note="Falling back to XREADGROUP",
+            )
+
+        # Step 2: Read new undelivered messages
         results = await r.xreadgroup(
-            {stream_key: ">"},
             _GROUP_NAME,
             agent_name,
+            {stream_key: ">"},
             count=1,
             block=block_ms,
             noack=False,
@@ -228,37 +279,54 @@ class TaskQueue:
 
         return None
 
-    async def mark_complete(self, project_id: str, task_id: str) -> None:
+    async def mark_complete(
+        self, project_id: str, task_id: str, stream_key: str, redis_id: str
+    ) -> None:
         """Acknowledge successful task completion.
 
-        Removes the task from pending-ack list and updates status hash.
+        Updates status hash and ACKs the message in Redis to remove from pending.
 
         Args:
             project_id: Project identifier.
             task_id: Task identifier.
+            stream_key: Redis stream key (e.g., "stream:backend_agent").
+            redis_id: Redis message ID to acknowledge.
         """
+        r = await self._r()
+
         await self._set_task_status(
             project_id,
             task_id,
             STATUS_COMPLETE,
             extra={"completed_at": datetime.now(timezone.utc).isoformat()},
         )
+
+        # ACK the message to remove it from pending
+        await r.xack(stream_key, _GROUP_NAME, redis_id)
+
         await logger.ainfo(
             "task_marked_complete",
             project_id=project_id,
             task_id=task_id,
+            redis_id=redis_id,
         )
 
     async def mark_failed(
-        self, project_id: str, task_id: str, error: str
+        self, project_id: str, task_id: str, stream_key: str, redis_id: str, error: str
     ) -> None:
         """Record task failure.
+
+        Updates status hash and ACKs the message in Redis to remove from pending.
 
         Args:
             project_id: Project identifier.
             task_id: Task identifier.
+            stream_key: Redis stream key (e.g., "stream:backend_agent").
+            redis_id: Redis message ID to acknowledge.
             error: Human-readable error description.
         """
+        r = await self._r()
+
         await self._set_task_status(
             project_id,
             task_id,
@@ -268,10 +336,15 @@ class TaskQueue:
                 "failed_at": datetime.now(timezone.utc).isoformat(),
             },
         )
+
+        # ACK the message to remove it from pending
+        await r.xack(stream_key, _GROUP_NAME, redis_id)
+
         await logger.awarning(
             "task_marked_failed",
             project_id=project_id,
             task_id=task_id,
+            redis_id=redis_id,
             error=error[:200],
         )
 

@@ -1,0 +1,8 @@
+==================================================================
+AI Dev Platform - Debug Report
+Generated: Sat Mar 21 01:49:04 IST 2026
+==================================================================
+
+Obtaining auth token...
+ERROR: Could not obtain auth token
+Is the API server running on port 8000?

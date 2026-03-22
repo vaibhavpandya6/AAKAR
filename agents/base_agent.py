@@ -1,6 +1,7 @@
 """Abstract base class for all specialized agents."""
 
 import json
+import re
 import time
 import uuid
 from abc import ABC, abstractmethod
@@ -25,8 +26,109 @@ logger = structlog.get_logger()
 _JSON_ENFORCEMENT = (
     "\n\nYou MUST respond with ONLY valid JSON. "
     "No markdown fences, no prose, no comments. "
-    "Start your response with { and end with }."
+    "Start your response with { and end with }. "
+    "IMPORTANT: All string values must have newlines escaped as \\n, not literal newlines."
 )
+
+
+def _strip_markdown_fences(text: str) -> str:
+    """Remove markdown code fences from LLM output."""
+    text = text.strip()
+    # Handle ```json or ``` at start
+    if text.startswith("```"):
+        # Remove first line with fence
+        text = text.split("\n", 1)[-1] if "\n" in text else text[3:]
+    # Remove closing fence
+    if text.rstrip().endswith("```"):
+        text = text.rsplit("```", 1)[0]
+    return text.strip()
+
+
+def _repair_json_strings(text: str) -> str:
+    """Attempt to repair common JSON issues from LLM output.
+
+    Fixes:
+    - Unescaped newlines within string values
+    - Unescaped tabs and other control characters
+    """
+    # Pattern to find JSON string values (handles escaped quotes)
+    # This regex finds content between quotes, accounting for escaped quotes
+    result = []
+    i = 0
+    in_string = False
+    string_start = -1
+
+    while i < len(text):
+        char = text[i]
+
+        if char == '"' and (i == 0 or text[i-1] != '\\'):
+            if not in_string:
+                in_string = True
+                string_start = i
+                result.append(char)
+            else:
+                # End of string - process the content
+                in_string = False
+                result.append(char)
+        elif in_string:
+            # Inside a string - escape control characters
+            if char == '\n':
+                result.append('\\n')
+            elif char == '\r':
+                result.append('\\r')
+            elif char == '\t':
+                result.append('\\t')
+            elif ord(char) < 32 and char not in '\n\r\t':
+                # Other control characters
+                result.append(f'\\u{ord(char):04x}')
+            else:
+                result.append(char)
+        else:
+            result.append(char)
+        i += 1
+
+    return ''.join(result)
+
+
+def _parse_json_safe(text: str) -> Dict[str, Any]:
+    """Parse JSON with automatic repair attempts.
+
+    Args:
+        text: Raw text that should contain JSON
+
+    Returns:
+        Parsed JSON as dict
+
+    Raises:
+        json.JSONDecodeError: If JSON cannot be parsed even after repairs
+    """
+    # Step 1: Strip markdown fences
+    clean = _strip_markdown_fences(text)
+
+    # Step 2: Try parsing as-is first
+    try:
+        return json.loads(clean)
+    except json.JSONDecodeError:
+        pass
+
+    # Step 3: Try repairing control characters in strings
+    repaired = _repair_json_strings(clean)
+    try:
+        return json.loads(repaired)
+    except json.JSONDecodeError:
+        pass
+
+    # Step 4: Try extracting just the JSON object
+    # Find first { and last }
+    start = clean.find('{')
+    end = clean.rfind('}')
+    if start != -1 and end != -1 and end > start:
+        extracted = clean[start:end+1]
+        repaired = _repair_json_strings(extracted)
+        return json.loads(repaired)
+
+    # If all else fails, raise the original error
+    raise json.JSONDecodeError("Could not parse or repair JSON", clean, 0)
 
 
 class LLMCallError(Exception):
@@ -121,13 +223,8 @@ class BaseAgent(ABC):
                     duration_ms=duration_ms,
                 )
 
-                # Strip optional markdown fence
-                clean = raw
-                if clean.startswith("```"):
-                    clean = clean.split("\n", 1)[-1]
-                    clean = clean.rsplit("```", 1)[0].strip()
-
-                parsed = json.loads(clean)
+                # Parse JSON with automatic repair
+                parsed = _parse_json_safe(raw)
                 return parsed
 
             except json.JSONDecodeError as exc:

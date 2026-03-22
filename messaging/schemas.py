@@ -74,13 +74,15 @@ class Message(BaseModel):
         Returns:
             Dictionary with serialized values for Redis Storage.
         """
+        import json
+
         return {
             "message_id": self.message_id,
             "correlation_id": self.correlation_id,
             "sender": self.sender,
             "recipient": self.recipient,
             "message_type": self.message_type.value,
-            "payload": str(self.payload),  # Redis stores as string
+            "payload": json.dumps(self.payload),  # Serialize as valid JSON
             "timestamp": self.timestamp.isoformat(),
             "schema_version": self.schema_version,
         }

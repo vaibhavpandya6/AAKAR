@@ -6,6 +6,7 @@ from typing import Dict, Optional
 
 import structlog
 
+from agents.base_agent import _parse_json_safe
 from agents.backend_agent.prompts import SYSTEM_PROMPT as BACKEND_SYSTEM
 from agents.backend_agent.prompts import format_backend_task_prompt
 from agents.database_agent.prompts import SYSTEM_PROMPT as DATABASE_SYSTEM
@@ -141,7 +142,7 @@ class AgentPromptOrchestrator:
             ValueError: If response missing required fields for agent type.
         """
         try:
-            parsed = json.loads(response)
+            parsed = _parse_json_safe(response)
         except json.JSONDecodeError as e:
             logger.error(
                 "Agent response not valid JSON",

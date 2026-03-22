@@ -76,7 +76,7 @@ async def reviewer_node(state: PlatformState) -> dict[str, Any]:
         vector_store = get_vector_store()
         long_term_memory = get_long_term_memory()
         message_bus = await get_message_bus()
-        workspace_manager = get_workspace_manager()
+        workspace_manager = await get_workspace_manager()
 
         reviewer = ReviewerAgent(
             agent_name=_REVIEWER_AGENT_NAME,

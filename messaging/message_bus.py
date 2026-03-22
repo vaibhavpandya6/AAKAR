@@ -1,16 +1,16 @@
 """Redis Streams-based message bus for inter-agent communication."""
 
 import json
-import logging
 from typing import List, Optional
 
 import redis.asyncio as redis
+import structlog
 from redis.asyncio import Redis
 
 from config import settings
 from messaging.schemas import Message
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 class MessageBus:
@@ -111,9 +111,9 @@ class MessageBus:
             # XREADGROUP reads messages not yet delivered to this consumer
             # $$ initializes group if it doesn't exist (ignored if exists)
             results = await self.redis.xreadgroup(
-                {stream: ">"},  # ">" means new messages
                 group,
                 consumer,
+                {stream: ">"},  # ">" means new messages
                 count=count,
                 block=timeout,
                 noack=False,  # Require explicit acknowledgment

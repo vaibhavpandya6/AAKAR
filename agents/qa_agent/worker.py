@@ -15,6 +15,19 @@ from typing import Optional
 
 import structlog
 
+# Configure structlog BEFORE importing any modules that use structlog.get_logger()
+# This ensures all loggers get the proper wrapper_class for async methods
+structlog.configure(
+    processors=[
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.add_log_level,
+        structlog.processors.JSONRenderer(),
+    ],
+    wrapper_class=structlog.make_filtering_bound_logger(logging.INFO),
+    logger_factory=structlog.PrintLoggerFactory(),
+    cache_logger_on_first_use=True,
+)
+
 from agents.qa_agent.agent import QAAgent
 from config.llm_factory import create_llm
 from memory.long_term import LongTermMemory
@@ -66,7 +79,7 @@ class QAWorker:
         long_term_memory = LongTermMemory()
 
         # Initialize workspace manager
-        workspace_manager = get_workspace_manager()
+        workspace_manager = await get_workspace_manager()
 
         # Create agent instance
         self.agent = QAAgent(
@@ -129,6 +142,14 @@ class QAWorker:
                         files_written=len(result.get("files_written", [])),
                     )
 
+                    # ACK the message in Redis and mark as complete
+                    await self.task_queue.mark_complete(
+                        project_id=project_id,
+                        task_id=task_id,
+                        stream_key=AGENT_STREAM,
+                        redis_id=redis_id,
+                    )
+
                 except Exception as task_error:
                     await self.log.aerror(
                         "task_execution_failed",
@@ -136,7 +157,15 @@ class QAWorker:
                         project_id=project_id,
                         error=str(task_error),
                     )
-                    # Agent has already called report_failure() internally
+
+                    # ACK the message in Redis and mark as failed
+                    await self.task_queue.mark_failed(
+                        project_id=project_id,
+                        task_id=task_id,
+                        stream_key=AGENT_STREAM,
+                        redis_id=redis_id,
+                        error=str(task_error),
+                    )
 
             except asyncio.CancelledError:
                 await self.log.ainfo("worker_cancelled", agent_name=AGENT_NAME)
@@ -172,16 +201,6 @@ def handle_shutdown_signal(signum, frame):
 async def main():
     """Entry point for QA agent worker."""
     global _worker_instance
-
-    # Setup structured logging
-    structlog.configure(
-        processors=[
-            structlog.processors.TimeStamper(fmt="iso"),
-            structlog.processors.add_log_level,
-            structlog.processors.JSONRenderer(),
-        ],
-        logger_factory=structlog.PrintLoggerFactory(),
-    )
 
     # Register signal handlers
     signal.signal(signal.SIGTERM, handle_shutdown_signal)

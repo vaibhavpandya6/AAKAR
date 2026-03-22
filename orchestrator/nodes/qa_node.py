@@ -243,7 +243,7 @@ async def _collect_workspace_files(project_id: str) -> list[str]:
         Empty list if manifest cannot be read.
     """
     try:
-        workspace_manager = get_workspace_manager()
+        workspace_manager = await get_workspace_manager()
         manifest = await workspace_manager.get_manifest(project_id)
         return list(manifest.get("files", {}).keys())
     except Exception as exc:

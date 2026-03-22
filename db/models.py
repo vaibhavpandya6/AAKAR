@@ -235,7 +235,7 @@ class AgentLog(Base):
     file_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     status: Mapped[str] = mapped_column(String(50), nullable=False)
     duration_ms: Mapped[int] = mapped_column(Integer, nullable=False)
-    log_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    log_metadata: Mapped[Optional[dict]] = mapped_column("metadata", JSON, nullable=True)
     timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=datetime.utcnow
     )

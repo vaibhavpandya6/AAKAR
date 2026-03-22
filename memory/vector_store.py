@@ -1,6 +1,5 @@
 """Vector store for semantic code search using ChromaDB."""
 
-import logging
 import re
 from pathlib import Path
 from typing import List, Optional
@@ -13,8 +12,7 @@ from chromadb.config import Settings
 from config import settings
 from workspace_manager import get_workspace_manager
 
-logger = logging.getLogger(__name__)
-struct_logger = structlog.get_logger()
+logger = structlog.get_logger()
 
 # Token counting for chunking
 _TOKENIZER = tiktoken.encoding_for_model("text-embedding-3-small")
@@ -34,6 +32,10 @@ class VectorStore:
 
     def __init__(self):
         """Initialize ChromaDB client."""
+        # Disable ChromaDB telemetry completely (fixes version 0.4.22 bug)
+        import os
+        os.environ["ANONYMIZED_TELEMETRY"] = "False"
+
         # Local persistent storage
         chroma_db_path = Path(settings.workspace_base_path).parent / "chroma_db"
         chroma_db_path.mkdir(parents=True, exist_ok=True)
@@ -166,7 +168,7 @@ class VectorStore:
             Exception: If indexing fails.
         """
         try:
-            await struct_logger.ainfo(
+            await logger.ainfo(
                 "file_indexing_started",
                 project_id=project_id,
                 file_path=file_path,
@@ -203,7 +205,7 @@ class VectorStore:
                     ],
                 )
 
-            await struct_logger.ainfo(
+            await logger.ainfo(
                 "file_indexing_completed",
                 project_id=project_id,
                 file_path=file_path,

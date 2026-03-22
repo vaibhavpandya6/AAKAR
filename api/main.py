@@ -25,7 +25,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from api.middleware.input_sanitizer import InputSanitizerMiddleware
-from api.routers import auth, plans, projects
+from api.routers import auth, diagnostics, plans, projects
 from api.schemas.models import HealthResponse
 from config import settings, validate_secrets
 from db.connection import close_db, init_db
@@ -150,6 +150,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(projects.router)
 app.include_router(plans.router)
+app.include_router(diagnostics.router)
 
 # ---------------------------------------------------------------------------
 # Health check

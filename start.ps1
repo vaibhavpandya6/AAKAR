@@ -307,10 +307,29 @@ function Start-Service([string]$label, [string[]]$cmdArgs, [string]$logName) {
 }
 
 # API (uvicorn via python -m uvicorn for reliable module resolution)
-# Note: The orchestrator and agents run as background asyncio tasks within the API process
 $processIds += Start-Service "API server       " `
     @("-m", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8080") `
     "api"
+
+# Backend Agent Worker
+$processIds += Start-Service "Backend Agent    " `
+    @("-m", "agents.backend_agent.worker") `
+    "backend_agent"
+
+# Frontend Agent Worker
+$processIds += Start-Service "Frontend Agent   " `
+    @("-m", "agents.frontend_agent.worker") `
+    "frontend_agent"
+
+# Database Agent Worker
+$processIds += Start-Service "Database Agent   " `
+    @("-m", "agents.database_agent.worker") `
+    "database_agent"
+
+# QA Agent Worker
+$processIds += Start-Service "QA Agent         " `
+    @("-m", "agents.qa_agent.worker") `
+    "qa_agent"
 
 # -- Save PIDs so stop.ps1 can find them -------------------------------------
 $pidsFile = Join-Path $scriptRoot ".pids"
@@ -346,9 +365,11 @@ if ($apiReady) {
 Write-Host ""
 Write-Host "  +---------------------------------------------------------+" -ForegroundColor DarkCyan
 Write-Host "  |  Service logs:                                           |" -ForegroundColor DarkCyan
-Write-Host "  |    API:           logs\api.log                          |" -ForegroundColor DarkCyan
-Write-Host "  |                                                          |" -ForegroundColor DarkCyan
-Write-Host "  |  Note: Orchestrator and agents run within the API       |" -ForegroundColor DarkCyan
+Write-Host "  |    API:              logs\api.log                       |" -ForegroundColor DarkCyan
+Write-Host "  |    Backend Agent:    logs\backend_agent.log             |" -ForegroundColor DarkCyan
+Write-Host "  |    Frontend Agent:   logs\frontend_agent.log            |" -ForegroundColor DarkCyan
+Write-Host "  |    Database Agent:   logs\database_agent.log            |" -ForegroundColor DarkCyan
+Write-Host "  |    QA Agent:         logs\qa_agent.log                  |" -ForegroundColor DarkCyan
 Write-Host "  |                                                          |" -ForegroundColor DarkCyan
 Write-Host "  |  To stop:  .\stop.ps1                                   |" -ForegroundColor DarkCyan
 Write-Host "  +---------------------------------------------------------+" -ForegroundColor DarkCyan

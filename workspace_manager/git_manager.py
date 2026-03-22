@@ -1,15 +1,15 @@
 """Git automation and version control management."""
 
-import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+import structlog
 from git import Repo, GitCommandError
 
 from config import settings
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 # ============================================================================
@@ -78,6 +78,37 @@ class GitManager:
             )
             raise GitError(f"Repository error for {project_id}: {str(e)}") from e
 
+    def _get_main_branch(self, repo: Repo):
+        """Get the main/master branch from a repository.
+
+        Handles GitPython's IterableList by searching for branch by name.
+
+        Args:
+            repo: GitPython Repo object.
+
+        Returns:
+            Branch reference (Head object).
+
+        Raises:
+            GitError: If no main or master branch found.
+        """
+        # Search for main or master branch by name
+        for branch in repo.heads:
+            if branch.name == "main":
+                return branch
+        for branch in repo.heads:
+            if branch.name == "master":
+                return branch
+
+        # No branches exist - create main branch
+        if len(repo.heads) == 0:
+            main_branch = repo.create_head("main")
+            main_branch.checkout()
+            return main_branch
+
+        # Fall back to first branch if neither main nor master found
+        return repo.heads[0]
+
     def init(self, project_id: str) -> None:
         """Initialize Git repository for project.
 
@@ -135,16 +166,7 @@ class GitManager:
             branch_name = f"agent/{agent_name}/task-{task_id}"
 
             # Create branch from main/master
-            try:
-                main_branch = repo.heads.main
-            except IndexError:
-                # Try master if main doesn't exist
-                try:
-                    main_branch = repo.heads.master
-                except IndexError:
-                    # Create main if no branches exist
-                    main_branch = repo.create_head("main")
-                    repo.heads.main.checkout()
+            main_branch = self._get_main_branch(repo)
 
             # Create new branch
             new_branch = repo.create_head(branch_name, main_branch)
@@ -255,10 +277,7 @@ class GitManager:
             repo = self._get_repo(project_id)
 
             # Determine main branch
-            try:
-                main_branch = repo.heads.main
-            except IndexError:
-                main_branch = repo.heads.master
+            main_branch = self._get_main_branch(repo)
 
             # Checkout main
             main_branch.checkout()
@@ -375,10 +394,7 @@ class GitManager:
             branch_name = f"release/{project_id}-{timestamp}"
 
             # Create branch from main
-            try:
-                main_branch = repo.heads.main
-            except IndexError:
-                main_branch = repo.heads.master
+            main_branch = self._get_main_branch(repo)
 
             release_branch = repo.create_head(branch_name, main_branch)
             release_branch.checkout()
@@ -455,10 +471,7 @@ class GitManager:
             repo = self._get_repo(project_id)
 
             # Determine main branch
-            try:
-                main_branch = repo.heads.main
-            except IndexError:
-                main_branch = repo.heads.master
+            main_branch = self._get_main_branch(repo)
 
             # Get diff
             diffs = main_branch.commit.diff(branch)

@@ -47,7 +47,15 @@ class BackendAgent(BaseAgent):
         task_id = str(task["id"])
         task_title = task.get("title", "")
         task_description = task.get("description", "")
-        acceptance_criteria = task.get("acceptance_criteria", "Not specified")
+
+        # Format acceptance criteria (it's a list from the planner)
+        acceptance_criteria_list = task.get("acceptance_criteria", [])
+        if isinstance(acceptance_criteria_list, list) and acceptance_criteria_list:
+            acceptance_criteria = "\n".join(f"- {criterion}" for criterion in acceptance_criteria_list)
+        elif isinstance(acceptance_criteria_list, str):
+            acceptance_criteria = acceptance_criteria_list
+        else:
+            acceptance_criteria = "Not specified"
 
         await self.log.ainfo(
             "backend_task_started",

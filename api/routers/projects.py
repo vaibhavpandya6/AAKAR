@@ -96,8 +96,13 @@ async def create_project(
 
     # ── 2. Initialise workspace ─────────────────────────────────────────────
     try:
-        workspace_manager = get_workspace_manager()
+        workspace_manager = await get_workspace_manager()
         await workspace_manager.create_workspace(str(project_id))
+
+        # Initialize git repository for the workspace
+        git_manager = GitManager()
+        await asyncio.to_thread(git_manager.init, str(project_id))
+        logger.info("create_project_git_initialized", project_id=str(project_id))
     except Exception as exc:
         logger.error("create_project_workspace_failed", project_id=str(project_id), error=str(exc))
         # Non-fatal at this stage — the graph will create it if missing
@@ -351,7 +356,7 @@ async def list_project_files(
     await _get_project_or_404(db, project_id)
 
     try:
-        workspace_manager = get_workspace_manager()
+        workspace_manager = await get_workspace_manager()
         manifest = await workspace_manager.get_manifest(project_id)
         files = sorted(manifest.get("files", {}).keys())
     except Exception as exc:
@@ -401,7 +406,7 @@ async def get_file_content(
     await _get_project_or_404(db, project_id)
 
     try:
-        workspace_manager = get_workspace_manager()
+        workspace_manager = await get_workspace_manager()
         content: str = await workspace_manager.read_file(project_id, file_path)
     except FileNotFoundError:
         raise HTTPException(

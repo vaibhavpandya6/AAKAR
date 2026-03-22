@@ -3,17 +3,17 @@
 import asyncio
 import hashlib
 import json
-import logging
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 
 import redis.asyncio as redis
+import structlog
 
 from config import settings
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 # ============================================================================
