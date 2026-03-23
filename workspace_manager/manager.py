@@ -51,7 +51,7 @@ class WorkspaceManager:
             redis_client: Optional Redis client for file locking.
         """
         self.redis = redis_client
-        self.base_path = Path(settings.workspace_base_path)
+        self.base_path = Path(settings.workspace_base_path).resolve()
 
     async def ensure_initialized(self):
         """Ensure Redis connection is initialized."""

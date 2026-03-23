@@ -39,7 +39,7 @@ class GitManager:
 
     def __init__(self):
         """Initialize Git manager."""
-        self.base_path = Path(settings.workspace_base_path)
+        self.base_path = Path(settings.workspace_base_path).resolve()
 
     def _get_repo_path(self, project_id: str) -> Path:
         """Get repository path for project.
@@ -82,6 +82,7 @@ class GitManager:
         """Get the main/master branch from a repository.
 
         Handles GitPython's IterableList by searching for branch by name.
+        Creates initial commit if repository is empty.
 
         Args:
             repo: GitPython Repo object.
@@ -100,8 +101,17 @@ class GitManager:
             if branch.name == "master":
                 return branch
 
-        # No branches exist - create main branch
+        # No branches exist - need to create initial commit first
         if len(repo.heads) == 0:
+            # Check if HEAD is valid (has any commits)
+            try:
+                repo.head.commit
+            except ValueError:
+                # No commits exist - create an initial empty commit
+                logger.info("Creating initial commit for empty repository")
+                repo.index.commit("Initial commit: workspace created")
+
+            # Now create main branch
             main_branch = repo.create_head("main")
             main_branch.checkout()
             return main_branch
@@ -224,8 +234,8 @@ class GitManager:
             # Build structured commit message
             commit_message = f"[{agent_name}] task #{task_id}: {task_title}\n\nCorrelation: {project_id}:{task_id}"
 
-            # Stage all changes
-            repo.index.add(A=True)
+            # Stage all changes (use git command directly for -A flag)
+            repo.git.add(A=True)
 
             # Commit
             if repo.index.diff("HEAD"):
@@ -275,37 +285,27 @@ class GitManager:
         """
         try:
             repo = self._get_repo(project_id)
+            repo_path = self._get_repo_path(project_id)
+
+            # Ensure clean state before merge
+            try:
+                repo.git.merge(abort=True)
+            except GitCommandError:
+                pass  # No merge in progress
 
             # Determine main branch
             main_branch = self._get_main_branch(repo)
 
             # Checkout main
-            main_branch.checkout()
+            main_branch.checkout(force=True)
 
-            # Check for conflicts before attempting merge
+            # Get source branch
             source_branch = repo.heads[branch]
 
-            # Merge with no fast-forward to preserve history
+            # Use git merge command directly (handles conflicts better)
             try:
-                base = repo.merge_base(main_branch, source_branch)
-                repo.index.merge_tree(source_branch.commit, base=base[0])
-
-                # Check for conflicts
-                if repo.index.conflicts:
-                    conflict_list = list(repo.index.conflicts.keys())
-                    logger.error(
-                        "Merge conflicts detected",
-                        project_id=project_id,
-                        branch=branch,
-                        conflicts=conflict_list,
-                    )
-                    raise MergeConflictError(
-                        f"Merge conflicts in files: {', '.join(conflict_list)}"
-                    )
-
-                # Commit merge
-                merge_message = f"Merge branch '{branch}' into {main_branch.name}"
-                repo.index.commit(merge_message)
+                # Perform merge with --no-ff to preserve history
+                repo.git.merge(branch, no_ff=True, m=f"Merge branch '{branch}' into {main_branch.name}")
 
                 logger.info(
                     "Branch merged successfully",
@@ -317,14 +317,32 @@ class GitManager:
                 return True
 
             except GitCommandError as e:
+                # Check if it's a conflict or "already merged" case
                 if "conflict" in str(e).lower():
+                    # Check if it's only manifest conflicts (auto-resolvable)
+                    manifest_path = repo_path / "workspace.manifest.json"
+                    if self._try_auto_resolve_manifest(repo, manifest_path, branch, main_branch.name):
+                        return True
+
                     logger.error(
                         "Merge conflict detected",
                         project_id=project_id,
                         branch=branch,
                         error=str(e),
                     )
+                    # Abort merge to leave repo in clean state
+                    try:
+                        repo.git.merge(abort=True)
+                    except GitCommandError:
+                        pass
                     raise MergeConflictError(str(e)) from e
+                elif "already up to date" in str(e).lower():
+                    logger.info(
+                        "Branch already merged",
+                        project_id=project_id,
+                        branch=branch,
+                    )
+                    return False
                 raise
 
         except MergeConflictError:
@@ -337,6 +355,82 @@ class GitManager:
                 error=str(e),
             )
             raise GitError(f"Merge failed: {str(e)}") from e
+
+    def _try_auto_resolve_manifest(
+        self, repo: Repo, manifest_path: Path, branch: str, target: str
+    ) -> bool:
+        """Auto-resolve workspace.manifest.json conflicts by merging JSON.
+
+        Combines file entries from both sides of the merge.
+
+        Args:
+            repo: Git repository
+            manifest_path: Path to workspace.manifest.json
+            branch: Source branch being merged
+            target: Target branch (usually main/master)
+
+        Returns:
+            True if conflict was auto-resolved, False if manual intervention needed
+        """
+        import json
+
+        try:
+            # Check what files are in conflict
+            status = repo.git.status(porcelain=True)
+            if "workspace.manifest.json" not in status:
+                return False
+
+            # Check if ONLY manifest is conflicted (allow auto-resolve)
+            unmerged_files = [
+                line.split(" ")[-1]
+                for line in status.split("\n")
+                if line.startswith("UU ")  # Both modified (conflict)
+            ]
+
+            # Read both versions of the manifest
+            ours = repo.git.show(f"HEAD:workspace.manifest.json")
+            theirs = repo.git.show(f"{branch}:workspace.manifest.json")
+
+            ours_data = json.loads(ours)
+            theirs_data = json.loads(theirs)
+
+            # Merge file dictionaries (union of files from both)
+            merged_files = {**ours_data.get("files", {}), **theirs_data.get("files", {})}
+
+            # Create merged manifest (keep metadata from ours)
+            merged_data = {
+                "project_id": ours_data.get("project_id"),
+                "created_at": ours_data.get("created_at"),
+                "files": merged_files,
+            }
+
+            # Write resolved version
+            manifest_path.write_text(json.dumps(merged_data, indent=2))
+
+            # Stage resolved file
+            repo.index.add(["workspace.manifest.json"])
+
+            # If there are other conflicts, don't auto-commit
+            if len(unmerged_files) > 1:
+                logger.info(
+                    "Manifest auto-resolved but other conflicts remain",
+                    unmerged_files=unmerged_files,
+                )
+                return False
+
+            # Commit the merge
+            repo.index.commit(f"Merge branch '{branch}' into {target}\n\nAuto-resolved workspace.manifest.json")
+
+            logger.info(
+                "Auto-resolved manifest conflict",
+                branch=branch,
+                target=target,
+            )
+            return True
+
+        except Exception as e:
+            logger.warning("Failed to auto-resolve manifest", error=str(e))
+            return False
 
     def tag(self, project_id: str, tag_name: str, message: str = "") -> None:
         """Create annotated tag at current commit.

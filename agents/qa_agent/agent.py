@@ -128,6 +128,86 @@ class QAAgent(BaseAgent):
         return "\n\n".join(blocks) if blocks else "No source files found."
 
     # ──────────────────────────────────────────────────────────────────────
+    # QA-gated merge helpers
+    # ──────────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _extract_original_task_id(qa_task_id: str) -> Optional[str]:
+        """Extract original task ID from QA task ID.
+
+        QA task IDs follow format: qa_task_{original_id}_{hash}
+        Example: qa_task_001_a2b1ca -> task_001
+
+        Args:
+            qa_task_id: QA task identifier
+
+        Returns:
+            Original task ID or None if not a QA task
+        """
+        if not qa_task_id.startswith("qa_task_"):
+            return None
+
+        # Remove "qa_" prefix and hash suffix
+        # Format: qa_task_001_a2b1ca -> task_001
+        parts = qa_task_id.split("_")
+        if len(parts) >= 3:
+            # Reconstruct as task_{id}
+            return f"task_{parts[2]}"
+        return None
+
+    async def _merge_dev_branch_to_main(
+        self, project_id: str, original_task_id: str, qa_task_id: str
+    ) -> bool:
+        """Merge original dev task branch to main after QA passes.
+
+        Tries to find and merge the dev branch that corresponds to the
+        original task. Searches backend, frontend, and database agents.
+
+        Args:
+            project_id: Project identifier
+            original_task_id: Original task ID (e.g., task_001)
+            qa_task_id: QA task identifier (for logging)
+
+        Returns:
+            True if merge succeeded, False if branch not found or merge failed
+        """
+        # Try common agent types
+        for agent_type in ["backend-agent-1", "frontend-agent-1", "database-agent-1"]:
+            dev_branch = f"agent/{agent_type}/task-{original_task_id}"
+
+            try:
+                # Check if branch exists
+                repo = self.git._get_repo(project_id)
+                if dev_branch not in [b.name for b in repo.heads]:
+                    continue
+
+                # Merge to main
+                success = self.git.merge_to_main(project_id, dev_branch)
+                if success:
+                    await self.log.ainfo(
+                        "dev_branch_merged_after_qa_pass",
+                        qa_task_id=qa_task_id,
+                        original_task_id=original_task_id,
+                        dev_branch=dev_branch,
+                    )
+                    return True
+
+            except Exception as e:
+                await self.log.awarning(
+                    "merge_to_main_error",
+                    dev_branch=dev_branch,
+                    error=str(e),
+                )
+                continue
+
+        # Branch not found
+        await self.log.awarning(
+            "dev_branch_not_found_for_merge",
+            original_task_id=original_task_id,
+        )
+        return False
+
+    # ──────────────────────────────────────────────────────────────────────
     # Test output parsing
     # ──────────────────────────────────────────────────────────────────────
 
@@ -392,6 +472,21 @@ class QAAgent(BaseAgent):
                 )
 
             if test_result.all_passed:
+                # ── Merge original dev branch to main after tests pass ────
+                original_task_id = self._extract_original_task_id(task_id)
+                if original_task_id:
+                    merged = await self._merge_dev_branch_to_main(
+                        project_id=project_id,
+                        original_task_id=original_task_id,
+                        qa_task_id=task_id,
+                    )
+                    if not merged:
+                        await self.log.awarning(
+                            "dev_branch_merge_skipped",
+                            task_id=task_id,
+                            original_task_id=original_task_id,
+                        )
+
                 await self.report_complete(
                     task_id=task_id,
                     project_id=project_id,

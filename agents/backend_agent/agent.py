@@ -142,6 +142,25 @@ class BackendAgent(BaseAgent):
                     size=len(content),
                 )
 
+            # ── 6.5. Validate Python syntax ───────────────────────────────
+            syntax_errors = await self._validate_python_syntax(
+                project_id=project_id,
+                files=files_written,
+            )
+
+            if syntax_errors:
+                await self.log.aerror(
+                    "python_syntax_errors_detected",
+                    task_id=task_id,
+                    errors=syntax_errors,
+                )
+                # Log warning but continue (let QA agent catch it)
+                await self.log.awarning(
+                    "continuing_despite_syntax_errors",
+                    task_id=task_id,
+                    error_count=len(syntax_errors),
+                )
+
             # ── 7. Commit ─────────────────────────────────────────────────
             self.git.commit(
                 project_id=project_id,
@@ -200,3 +219,61 @@ class BackendAgent(BaseAgent):
                 error=str(exc),
             )
             raise
+
+    async def _validate_python_syntax(
+        self, project_id: str, files: List[str]
+    ) -> List[Dict[str, str]]:
+        """Validate Python syntax of generated files.
+
+        Args:
+            project_id: Project identifier
+            files: List of file paths to validate
+
+        Returns:
+            List of syntax errors (empty if all valid)
+        """
+        syntax_errors = []
+
+        for file_path in files:
+            # Only validate Python files
+            if not file_path.endswith('.py'):
+                continue
+
+            try:
+                content = await self.workspace_manager.read_file(project_id, file_path)
+
+                # Compile to check syntax
+                compile(content, file_path, 'exec')
+
+                # Check for common async/await mistakes
+                if 'await ' in content:
+                    # Find all function definitions
+                    lines = content.split('\n')
+                    for i, line in enumerate(lines, 1):
+                        # Look for def (not async def) followed by await usage
+                        if line.strip().startswith('def ') and 'async def' not in line:
+                            # Check next 50 lines for await usage
+                            func_block = '\n'.join(lines[i:i+50])
+                            if 'await ' in func_block:
+                                syntax_errors.append({
+                                    'file': file_path,
+                                    'line': i,
+                                    'error': 'Function uses await but is not declared as async def',
+                                    'snippet': line.strip(),
+                                })
+
+            except SyntaxError as e:
+                syntax_errors.append({
+                    'file': file_path,
+                    'line': e.lineno,
+                    'error': str(e.msg),
+                    'snippet': e.text.strip() if e.text else '',
+                })
+            except Exception as e:
+                await self.log.awarning(
+                    "syntax_validation_failed",
+                    file_path=file_path,
+                    error=str(e),
+                )
+
+        return syntax_errors

@@ -1,5 +1,6 @@
 """Task queue built on Redis Streams with consumer-group delivery."""
 
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone
@@ -10,6 +11,7 @@ import structlog
 
 from config import settings
 from task_system.router import AgentRouter
+from workspace_manager.git_manager import GitManager, GitError, MergeConflictError
 
 logger = structlog.get_logger()
 
@@ -426,3 +428,73 @@ class TaskQueue:
             existing.update(extra)
 
         await r.hset(status_key, task_id, json.dumps(existing))
+
+    # ──────────────────────────────────────────────────────────────────────
+    # Branch merge after task completion
+    # ──────────────────────────────────────────────────────────────────────
+
+    async def merge_branch_after_completion(
+        self, project_id: str, task_id: str, agent_name: str
+    ) -> bool:
+        """Merge the agent's task branch to main after task completion.
+
+        This should be called after mark_complete() to merge changes
+        from the agent's task branch back to main/master.
+
+        Args:
+            project_id: Project identifier.
+            task_id: Task identifier.
+            agent_name: Agent name (e.g., "backend-agent-1").
+
+        Returns:
+            True if merge succeeded, False if merge failed (conflict or error).
+        """
+        branch_name = f"agent/{agent_name}/task-{task_id}"
+
+        try:
+            git_manager = GitManager()
+            await asyncio.to_thread(
+                git_manager.merge_to_main, project_id, branch_name
+            )
+
+            await logger.ainfo(
+                "task_branch_merged",
+                project_id=project_id,
+                task_id=task_id,
+                branch=branch_name,
+                agent=agent_name,
+            )
+            return True
+
+        except MergeConflictError as exc:
+            await logger.awarning(
+                "task_branch_merge_conflict",
+                project_id=project_id,
+                task_id=task_id,
+                branch=branch_name,
+                agent=agent_name,
+                error=str(exc)[:200],
+            )
+            return False
+
+        except GitError as exc:
+            await logger.awarning(
+                "task_branch_merge_failed",
+                project_id=project_id,
+                task_id=task_id,
+                branch=branch_name,
+                agent=agent_name,
+                error=str(exc)[:200],
+            )
+            return False
+
+        except Exception as exc:
+            await logger.aerror(
+                "task_branch_merge_error",
+                project_id=project_id,
+                task_id=task_id,
+                branch=branch_name,
+                agent=agent_name,
+                error=str(exc)[:200],
+            )
+            return False

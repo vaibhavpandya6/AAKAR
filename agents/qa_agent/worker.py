@@ -150,6 +150,13 @@ class QAWorker:
                         redis_id=redis_id,
                     )
 
+                    # Merge task branch to main after completion
+                    await self.task_queue.merge_branch_after_completion(
+                        project_id=project_id,
+                        task_id=task_id,
+                        agent_name=AGENT_NAME,
+                    )
+
                 except Exception as task_error:
                     await self.log.aerror(
                         "task_execution_failed",
