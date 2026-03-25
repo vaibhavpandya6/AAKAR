@@ -750,5 +750,3 @@ docker info
 ## Support
 
 For issues, feature requests, or documentation improvements, please open an issue on GitHub or consult the inline code comments throughout the repository.
-
-Happy building! 🚀
