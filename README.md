@@ -1,4 +1,4 @@
-# ai-dev-platform
+# Aakar dev platform
 
 A production-ready **multi-agent AI development platform** that orchestrates large language models to automatically plan, implement, test, review, and deliver full-stack software projects.
 
