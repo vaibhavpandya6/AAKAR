@@ -311,6 +311,11 @@ $processIds += Start-Service "API server       " `
     @("-m", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8080") `
     "api"
 
+# Bootstrap Agent Worker (generates config files)
+$processIds += Start-Service "Bootstrap Agent  " `
+    @("-m", "agents.bootstrap_agent.worker") `
+    "bootstrap_agent"
+
 # Backend Agent Worker
 $processIds += Start-Service "Backend Agent    " `
     @("-m", "agents.backend_agent.worker") `
@@ -366,6 +371,7 @@ Write-Host ""
 Write-Host "  +---------------------------------------------------------+" -ForegroundColor DarkCyan
 Write-Host "  |  Service logs:                                           |" -ForegroundColor DarkCyan
 Write-Host "  |    API:              logs\api.log                       |" -ForegroundColor DarkCyan
+Write-Host "  |    Bootstrap Agent:  logs\bootstrap_agent.log           |" -ForegroundColor DarkCyan
 Write-Host "  |    Backend Agent:    logs\backend_agent.log             |" -ForegroundColor DarkCyan
 Write-Host "  |    Frontend Agent:   logs\frontend_agent.log            |" -ForegroundColor DarkCyan
 Write-Host "  |    Database Agent:   logs\database_agent.log            |" -ForegroundColor DarkCyan

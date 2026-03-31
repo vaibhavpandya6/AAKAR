@@ -1,0 +1,2877 @@
+{
+  "project_summary": "This proposal outlines the development of a comprehensive Task Management System designed to enhance team productivity through real-time collaboration, secure task tracking, and intuitive user management. Over a 12-week period, we will deliver a robust platform built on your existing technology stack (Node.js, React, PostgreSQL, AWS), enabling users to create, organize, and share tasks while maintaining strict security and performance standards. The solution focuses on high-priority features suc\n\n**Project Metrics:**\n- Modules: User Management, Task Management, Collaboration, Dashboard & Reporting\n- Total Tasks: 44\n- Total Effort: 125 days\n- Story Points: 173\n- Timeline: 12 weeks\n- Architecture: Modular Monolith\n- Identified Risks: 4\n**Tech Stack:** Backend: Express.js | Frontend: React | Database: PostgreSQL",
+  "statistics": {
+    "total_tasks": 44,
+    "total_story_points": 173,
+    "total_effort_days": 125,
+    "skill_breakdown": {
+      "frontend": 17,
+      "database": 3,
+      "backend": 18,
+      "qa": 6
+    },
+    "module_breakdown": {
+      "User Management": 12,
+      "Task Management": 12,
+      "Collaboration": 12,
+      "Dashboard & Reporting": 8
+    },
+    "priority_breakdown": {
+      "Must Have": 29,
+      "Should Have": 14,
+      "Could Have": 1
+    }
+  },
+  "tasks": [
+    {
+      "id": "wbs_user_001",
+      "title": "Design Auth UI Flows",
+      "description": "Create wireframes and high-fidelity mockups for Registration, Login, Password Reset, and Profile screens ensuring WCAG 2.1 AA compliance.",
+      "skill_required": "frontend",
+      "acceptance_criteria": [
+        "All auth and profile screens approved by PO with WCAG 2.1 AA audit passed."
+      ],
+      "depends_on": [],
+      "wbs_id": "WBS-USER-001",
+      "priority": "Must Have",
+      "story_points": 3,
+      "effort_days": 3,
+      "req_ids": [
+        "FR-001",
+        "FR-002",
+        "FR-003",
+        "FR-004",
+        "NFR-006"
+      ],
+      "module": "User Management",
+      "role": "Designer",
+      "technical_notes": "Ensure focus states and color contrast meet AA standards; include error state designs for invalid inputs.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_user_002",
+      "title": "Setup DB Schema for Users",
+      "description": "Design and implement PostgreSQL tables for Users, including fields for email, password_hash, name, avatar_url, preferences (JSONB), and role.",
+      "skill_required": "database",
+      "acceptance_criteria": [
+        "Migration script runs successfully; schema matches architecture document; unique constraint on email enforced."
+      ],
+      "depends_on": [],
+      "wbs_id": "WBS-USER-002",
+      "priority": "Must Have",
+      "story_points": 2,
+      "effort_days": 2,
+      "req_ids": [
+        "FR-001",
+        "FR-004",
+        "NFR-004"
+      ],
+      "module": "User Management",
+      "role": "Developer",
+      "technical_notes": "Use UUID for primary keys; ensure password_hash column is NOT NULL; index email for fast lookups.",
+      "test_cases": [
+        {
+          "test_id": "TC-DA-001",
+          "test_name": "Happy path: User schema migration runs successfully and creates expected tables with unique email constraint",
+          "type": "Integration",
+          "priority": "Critical"
+        },
+        {
+          "test_id": "TC-DA-002",
+          "test_name": "Edge case: Re-running migration is idempotent and does not alter schema",
+          "type": "Integration",
+          "priority": "Medium"
+        },
+        {
+          "test_id": "TC-DA-003",
+          "test_name": "Failure scenario: Inserting duplicate email violates unique constraint",
+          "type": "Unit",
+          "priority": "High"
+        }
+      ]
+    },
+    {
+      "id": "wbs_user_003",
+      "title": "Implement Registration API",
+      "description": "Build POST /api/v1/auth/register endpoint with email/password validation, bcrypt hashing, and user creation logic.",
+      "skill_required": "backend",
+      "acceptance_criteria": [
+        "Valid registration creates user with hashed password; invalid inputs return 400; duplicate email returns 409."
+      ],
+      "depends_on": [
+        "wbs_user_002"
+      ],
+      "wbs_id": "WBS-USER-003",
+      "priority": "Must Have",
+      "story_points": 3,
+      "effort_days": 3,
+      "req_ids": [
+        "FR-001",
+        "NFR-004"
+      ],
+      "module": "User Management",
+      "role": "Developer",
+      "technical_notes": "Use bcrypt with cost factor 10; validate email format and password strength (min 8 chars, 1 number, 1 special char).",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_user_004",
+      "title": "Implement Login & JWT Auth",
+      "description": "Build POST /api/v1/auth/login endpoint to verify credentials, generate JWT access/refresh tokens, and set HttpOnly cookies.",
+      "skill_required": "backend",
+      "acceptance_criteria": [
+        "Valid credentials return JWT; invalid credentials return 401; tokens stored in HttpOnly cookies."
+      ],
+      "depends_on": [
+        "wbs_user_003"
+      ],
+      "wbs_id": "WBS-USER-004",
+      "priority": "Must Have",
+      "story_points": 3,
+      "effort_days": 3,
+      "req_ids": [
+        "FR-002",
+        "NFR-004"
+      ],
+      "module": "User Management",
+      "role": "Developer",
+      "technical_notes": "Implement rate limiting (5/min); ensure JWT expiration is short (15m) with refresh token rotation.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_user_005",
+      "title": "Implement Password Reset Flow",
+      "description": "Create POST /api/v1/auth/forgot-password to generate secure reset tokens and trigger SendGrid email with reset link.",
+      "skill_required": "backend",
+      "acceptance_criteria": [
+        "Email sent with valid reset link; token expires after defined duration; password update endpoint works."
+      ],
+      "depends_on": [
+        "wbs_user_003"
+      ],
+      "wbs_id": "WBS-USER-005",
+      "priority": "Must Have",
+      "story_points": 3,
+      "effort_days": 3,
+      "req_ids": [
+        "FR-003",
+        "INT-001"
+      ],
+      "module": "User Management",
+      "role": "Developer",
+      "technical_notes": "Store reset token hash in DB; ensure token is single-use; integrate SendGrid API for email delivery.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_user_006",
+      "title": "Build Auth UI Components",
+      "description": "Develop React/TypeScript components for Registration, Login, and Password Reset forms with client-side validation.",
+      "skill_required": "frontend",
+      "acceptance_criteria": [
+        "Forms submit correctly; validation errors display immediately; accessible keyboard navigation works."
+      ],
+      "depends_on": [
+        "wbs_user_001"
+      ],
+      "wbs_id": "WBS-USER-006",
+      "priority": "Must Have",
+      "story_points": 5,
+      "effort_days": 4,
+      "req_ids": [
+        "FR-001",
+        "FR-002",
+        "FR-003",
+        "NFR-006"
+      ],
+      "module": "User Management",
+      "role": "Developer",
+      "technical_notes": "Use React Hook Form for validation; ensure ARIA labels on all inputs; handle loading and error states gracefully.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_user_007",
+      "title": "Implement Profile Management API",
+      "description": "Build GET/PUT /api/v1/users/profile endpoints to retrieve and update user details, including avatar upload logic.",
+      "skill_required": "backend",
+      "acceptance_criteria": [
+        "Profile data saved to DB; avatar uploaded to S3 and URL stored; preferences persist as JSONB."
+      ],
+      "depends_on": [
+        "wbs_user_004"
+      ],
+      "wbs_id": "WBS-USER-007",
+      "priority": "Should Have",
+      "story_points": 3,
+      "effort_days": 3,
+      "req_ids": [
+        "FR-004",
+        "INT-002"
+      ],
+      "module": "User Management",
+      "role": "Developer",
+      "technical_notes": "Generate pre-signed S3 URLs for direct upload; validate image types (jpg, png) and size limits.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_user_008",
+      "title": "Build Profile UI & Avatar Upload",
+      "description": "Create Profile page with form for name/preferences and drag-and-drop avatar upload component.",
+      "skill_required": "frontend",
+      "acceptance_criteria": [
+        "User can update name and preferences; avatar uploads and displays correctly; changes persist on refresh."
+      ],
+      "depends_on": [
+        "wbs_user_001",
+        "wbs_user_007"
+      ],
+      "wbs_id": "WBS-USER-008",
+      "priority": "Should Have",
+      "story_points": 3,
+      "effort_days": 3,
+      "req_ids": [
+        "FR-004",
+        "NFR-006"
+      ],
+      "module": "User Management",
+      "role": "Developer",
+      "technical_notes": "Use AWS SDK for pre-signed URL generation on frontend; implement image preview before upload.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_user_009",
+      "title": "Implement Admin User Management API",
+      "description": "Build GET /api/v1/admin/users and PUT /api/v1/admin/users/:id endpoints with RBAC middleware for Admin role verification.",
+      "skill_required": "backend",
+      "acceptance_criteria": [
+        "Admin can list all users; Admin can modify user status/role; non-admins receive 403 Forbidden."
+      ],
+      "depends_on": [
+        "wbs_user_004"
+      ],
+      "wbs_id": "WBS-USER-009",
+      "priority": "Should Have",
+      "story_points": 3,
+      "effort_days": 3,
+      "req_ids": [
+        "FR-005",
+        "NFR-004"
+      ],
+      "module": "User Management",
+      "role": "Developer",
+      "technical_notes": "Implement RBAC middleware checking 'Admin' role; assume fixed role set per ASM-003; paginate user list.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_user_010",
+      "title": "Build Admin User Management UI",
+      "description": "Develop Admin dashboard table to view users, edit roles/status, and handle pagination and search.",
+      "skill_required": "frontend",
+      "acceptance_criteria": [
+        "Admin sees user list; can edit roles/status; changes reflect immediately; accessible table structure."
+      ],
+      "depends_on": [
+        "wbs_user_001",
+        "wbs_user_009"
+      ],
+      "wbs_id": "WBS-USER-010",
+      "priority": "Should Have",
+      "story_points": 3,
+      "effort_days": 3,
+      "req_ids": [
+        "FR-005",
+        "NFR-006"
+      ],
+      "module": "User Management",
+      "role": "Developer",
+      "technical_notes": "Use server-side pagination; implement role dropdown based on ASM-003 assumptions; add confirmation modals for edits.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_user_011",
+      "title": "Security & Auth Unit Tests",
+      "description": "Write comprehensive unit and integration tests for all auth endpoints, password hashing, and JWT validation logic.",
+      "skill_required": "qa",
+      "acceptance_criteria": [
+        "100% code coverage for auth module; all negative test cases (invalid creds, expired tokens) pass."
+      ],
+      "depends_on": [
+        "wbs_user_003",
+        "wbs_user_004",
+        "wbs_user_005"
+      ],
+      "wbs_id": "WBS-USER-011",
+      "priority": "Must Have",
+      "story_points": 3,
+      "effort_days": 3,
+      "req_ids": [
+        "FR-001",
+        "FR-002",
+        "FR-003",
+        "NFR-004"
+      ],
+      "module": "User Management",
+      "role": "QA Engineer",
+      "technical_notes": "Test bcrypt hashing strength; verify JWT signature validation; test rate limiting behavior.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_user_012",
+      "title": "DevOps Auth Pipeline Setup",
+      "description": "Configure GitHub Actions CI/CD pipeline for automated testing, security scanning, and deployment of Auth module.",
+      "skill_required": "backend",
+      "acceptance_criteria": [
+        "Pipeline runs on PR; security scan passes; deployment to staging environment successful."
+      ],
+      "depends_on": [
+        "wbs_user_002"
+      ],
+      "wbs_id": "WBS-USER-012",
+      "priority": "Must Have",
+      "story_points": 2,
+      "effort_days": 2,
+      "req_ids": [
+        "NFR-003",
+        "NFR-005"
+      ],
+      "module": "User Management",
+      "role": "Developer",
+      "technical_notes": "Include SAST/DAST scans; configure environment variables for JWT secrets and SendGrid keys securely.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_task_001",
+      "title": "Design Task CRUD UI Components",
+      "description": "Create React/TypeScript components for task creation, editing, and deletion forms with validation states and responsive layout.",
+      "skill_required": "frontend",
+      "acceptance_criteria": [
+        "UI mockups for task forms approved with WCAG 2.1 AA contrast and focus states verified."
+      ],
+      "depends_on": [],
+      "wbs_id": "WBS-TASK-001",
+      "priority": "Must Have",
+      "story_points": 5,
+      "effort_days": 3,
+      "req_ids": [
+        "FR-006",
+        "FR-007",
+        "FR-008",
+        "NFR-006"
+      ],
+      "module": "Task Management",
+      "role": "Designer",
+      "technical_notes": "Ensure form fields map to Task entity attributes: title, description, due_date, priority, labels.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_task_002",
+      "title": "Implement Task Database Schema",
+      "description": "Define PostgreSQL tables for Task, Subtask, and ActivityLog with UUIDs, soft delete flags, and JSONB for labels/preferences.",
+      "skill_required": "database",
+      "acceptance_criteria": [
+        "Migration scripts run successfully; schema matches data model with correct foreign keys and indexes."
+      ],
+      "depends_on": [],
+      "wbs_id": "WBS-TASK-002",
+      "priority": "Must Have",
+      "story_points": 3,
+      "effort_days": 2,
+      "req_ids": [
+        "FR-006",
+        "FR-008",
+        "FR-012"
+      ],
+      "module": "Task Management",
+      "role": "Developer",
+      "technical_notes": "Add tsvector column for full-text search on title/description. Ensure is_deleted boolean defaults to false.",
+      "test_cases": [
+        {
+          "test_id": "TC-DA-004",
+          "test_name": "Happy path: Task schema migration runs successfully and creates tables with correct foreign keys and indexes",
+          "type": "Integration",
+          "priority": "Critical"
+        },
+        {
+          "test_id": "TC-DA-005",
+          "test_name": "Edge case: Foreign key constraint prevents orphaned task creation",
+          "type": "Unit",
+          "priority": "High"
+        },
+        {
+          "test_id": "TC-DA-006",
+          "test_name": "Failure scenario: Deleting a user that has associated tasks is restricted",
+          "type": "Unit",
+          "priority": "Medium"
+        }
+      ]
+    },
+    {
+      "id": "wbs_task_003",
+      "title": "Build Task CRUD API Endpoints",
+      "description": "Develop Node.js/Express endpoints for creating, reading, updating, and soft-deleting tasks with ownership validation.",
+      "skill_required": "backend",
+      "acceptance_criteria": [
+        "API returns 200/201/404/403 correctly; soft delete sets is_deleted flag without removing row."
+      ],
+      "depends_on": [
+        "wbs_task_002"
+      ],
+      "wbs_id": "WBS-TASK-003",
+      "priority": "Must Have",
+      "story_points": 5,
+      "effort_days": 4,
+      "req_ids": [
+        "FR-006",
+        "FR-007",
+        "FR-008"
+      ],
+      "module": "Task Management",
+      "role": "Developer",
+      "technical_notes": "Implement middleware to check task ownership before update/delete. Use transaction for audit log insertion.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_task_004",
+      "title": "Implement Subtask Logic",
+      "description": "Create API logic and DB relationships to link subtasks to parent tasks and track individual completion status.",
+      "skill_required": "backend",
+      "acceptance_criteria": [
+        "Subtasks can be created under a parent; parent status updates based on subtask completion logic."
+      ],
+      "depends_on": [
+        "wbs_task_003"
+      ],
+      "wbs_id": "WBS-TASK-004",
+      "priority": "Should Have",
+      "story_points": 3,
+      "effort_days": 3,
+      "req_ids": [
+        "FR-012"
+      ],
+      "module": "Task Management",
+      "role": "Developer",
+      "technical_notes": "Ensure cascade delete for subtasks if parent is deleted (hard delete) or soft delete logic propagates.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_task_005",
+      "title": "Develop Task Filtering & Search API",
+      "description": "Implement PostgreSQL full-text search and filtering logic for status, priority, date range, and labels.",
+      "skill_required": "backend",
+      "acceptance_criteria": [
+        "Search query returns results in <200ms; filters correctly narrow result set based on params."
+      ],
+      "depends_on": [
+        "wbs_task_002"
+      ],
+      "wbs_id": "WBS-TASK-005",
+      "priority": "Must Have",
+      "story_points": 5,
+      "effort_days": 4,
+      "req_ids": [
+        "FR-010",
+        "FR-011",
+        "NFR-002"
+      ],
+      "module": "Task Management",
+      "role": "Developer",
+      "technical_notes": "Use pg-tsvector for full-text search. Optimize indexes on status, priority, and created_at columns.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_task_006",
+      "title": "Build Task List & Detail Views",
+      "description": "Develop React components to display task lists with filtering controls and detailed task view with edit/delete actions.",
+      "skill_required": "frontend",
+      "acceptance_criteria": [
+        "Task list renders data from API; filters update list dynamically; edit modal opens with pre-filled data."
+      ],
+      "depends_on": [
+        "wbs_task_001",
+        "wbs_task_003"
+      ],
+      "wbs_id": "WBS-TASK-006",
+      "priority": "Must Have",
+      "story_points": 8,
+      "effort_days": 5,
+      "req_ids": [
+        "FR-006",
+        "FR-007",
+        "FR-010"
+      ],
+      "module": "Task Management",
+      "role": "Developer",
+      "technical_notes": "Implement optimistic UI updates for filtering. Ensure loading states and error handling are present.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_task_007",
+      "title": "Implement Task Completion Flow",
+      "description": "Create UI and API logic to mark tasks as complete with optional notes and update timestamps.",
+      "skill_required": "frontend",
+      "acceptance_criteria": [
+        "Clicking complete updates status to 'Done'; completion note is saved and displayed."
+      ],
+      "depends_on": [
+        "wbs_task_003"
+      ],
+      "wbs_id": "WBS-TASK-007",
+      "priority": "Must Have",
+      "story_points": 3,
+      "effort_days": 2,
+      "req_ids": [
+        "FR-009"
+      ],
+      "module": "Task Management",
+      "role": "Developer",
+      "technical_notes": "Trigger activity log entry upon completion. Ensure subtask completion logic updates parent if applicable.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_task_008",
+      "title": "Implement Subtask UI Components",
+      "description": "Build React components for adding, editing, and checking off subtasks within the parent task view.",
+      "skill_required": "frontend",
+      "acceptance_criteria": [
+        "Subtasks list renders under parent; checkbox toggles completion; new subtask form works."
+      ],
+      "depends_on": [
+        "wbs_task_004",
+        "wbs_task_006"
+      ],
+      "wbs_id": "WBS-TASK-008",
+      "priority": "Should Have",
+      "story_points": 5,
+      "effort_days": 3,
+      "req_ids": [
+        "FR-012"
+      ],
+      "module": "Task Management",
+      "role": "Developer",
+      "technical_notes": "Use nested list structure. Ensure parent progress bar updates visually when subtasks are checked.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_task_009",
+      "title": "Write Unit & Integration Tests",
+      "description": "Create Jest/Supertest suites for Task CRUD, subtask logic, and search performance benchmarks.",
+      "skill_required": "qa",
+      "acceptance_criteria": [
+        "100% code coverage for core logic; search performance test passes <200ms threshold."
+      ],
+      "depends_on": [
+        "wbs_task_003",
+        "wbs_task_005"
+      ],
+      "wbs_id": "WBS-TASK-009",
+      "priority": "Must Have",
+      "story_points": 5,
+      "effort_days": 4,
+      "req_ids": [
+        "FR-006",
+        "FR-010",
+        "NFR-002"
+      ],
+      "module": "Task Management",
+      "role": "QA Engineer",
+      "technical_notes": "Include negative tests for invalid inputs and unauthorized access attempts.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_task_010",
+      "title": "Accessibility Audit & Fixes",
+      "description": "Conduct manual and automated WCAG 2.1 AA audit on task forms and lists; fix contrast, ARIA labels, and keyboard nav.",
+      "skill_required": "qa",
+      "acceptance_criteria": [
+        "Automated audit tool (e.g., axe) reports zero critical issues; manual keyboard navigation works."
+      ],
+      "depends_on": [
+        "wbs_task_006",
+        "wbs_task_008"
+      ],
+      "wbs_id": "WBS-TASK-010",
+      "priority": "Must Have",
+      "story_points": 3,
+      "effort_days": 2,
+      "req_ids": [
+        "NFR-006"
+      ],
+      "module": "Task Management",
+      "role": "QA Engineer",
+      "technical_notes": "Focus on form validation error announcements and focus management in modals.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_task_011",
+      "title": "Document Task API & Schema",
+      "description": "Generate Swagger/OpenAPI documentation for all Task Management endpoints and database schema diagrams.",
+      "skill_required": "backend",
+      "acceptance_criteria": [
+        "Swagger UI renders all endpoints with correct request/response examples; schema diagram is up to date."
+      ],
+      "depends_on": [
+        "wbs_task_003",
+        "wbs_task_005"
+      ],
+      "wbs_id": "WBS-TASK-011",
+      "priority": "Should Have",
+      "story_points": 2,
+      "effort_days": 1,
+      "req_ids": [
+        "FR-006",
+        "FR-010"
+      ],
+      "module": "Task Management",
+      "role": "Developer",
+      "technical_notes": "Include error codes and rate limit info in documentation.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_task_012",
+      "title": "Deploy Task Module to Staging",
+      "description": "Configure CI/CD pipeline to deploy Task Management module to AWS staging environment with database migrations.",
+      "skill_required": "backend",
+      "acceptance_criteria": [
+        "Staging environment accessible; database migrations applied automatically; health check passes."
+      ],
+      "depends_on": [
+        "wbs_task_002",
+        "wbs_task_003"
+      ],
+      "wbs_id": "WBS-TASK-012",
+      "priority": "Must Have",
+      "story_points": 3,
+      "effort_days": 2,
+      "req_ids": [
+        "NFR-003"
+      ],
+      "module": "Task Management",
+      "role": "Developer",
+      "technical_notes": "Ensure environment variables for DB connection and S3 are correctly injected.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_coll_001",
+      "title": "Design Task Sharing UI Flow",
+      "description": "Create wireframes and high-fidelity mockups for the task sharing modal, email invite input, and confirmation states.",
+      "skill_required": "frontend",
+      "acceptance_criteria": [
+        "Design files approved by PM with WCAG 2.1 AA contrast ratios verified."
+      ],
+      "depends_on": [],
+      "wbs_id": "WBS-COLL-001",
+      "priority": "Must Have",
+      "story_points": 3,
+      "effort_days": 2,
+      "req_ids": [
+        "FR-014",
+        "NFR-006"
+      ],
+      "module": "Collaboration",
+      "role": "Designer",
+      "technical_notes": "Ensure design accounts for existing user validation state as per ASM-001.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_coll_002",
+      "title": "Implement Task Share API Endpoint",
+      "description": "Develop POST /api/v1/tasks/:id/share endpoint to validate recipient email, check existing user status, and create share record.",
+      "skill_required": "backend",
+      "acceptance_criteria": [
+        "API returns 200 on valid invite to existing user; 404 if user not found; share record created in DB."
+      ],
+      "depends_on": [
+        "wbs_coll_001"
+      ],
+      "wbs_id": "WBS-COLL-002",
+      "priority": "Must Have",
+      "story_points": 5,
+      "effort_days": 3,
+      "req_ids": [
+        "FR-014",
+        "NFR-004"
+      ],
+      "module": "Collaboration",
+      "role": "Developer",
+      "technical_notes": "Enforce ASM-001: Reject invites for non-existent users. Use JWT for auth.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_coll_003",
+      "title": "Integrate SendGrid for Invites",
+      "description": "Configure SendGrid template and implement logic to send email invites with secure tokens upon share creation.",
+      "skill_required": "backend",
+      "acceptance_criteria": [
+        "Email received by recipient with valid link; token expires after defined duration."
+      ],
+      "depends_on": [
+        "wbs_coll_002"
+      ],
+      "wbs_id": "WBS-COLL-003",
+      "priority": "Must Have",
+      "story_points": 3,
+      "effort_days": 2,
+      "req_ids": [
+        "FR-014",
+        "INT-001"
+      ],
+      "module": "Collaboration",
+      "role": "Developer",
+      "technical_notes": "Use existing SendGrid integration (INT-001). Handle rate limiting.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_coll_004",
+      "title": "Build Task Sharing Frontend Component",
+      "description": "Implement React component for sharing tasks, including email input validation and success/error feedback.",
+      "skill_required": "frontend",
+      "acceptance_criteria": [
+        "Component renders correctly; validates email format; displays success message on API 200."
+      ],
+      "depends_on": [
+        "wbs_coll_001"
+      ],
+      "wbs_id": "WBS-COLL-004",
+      "priority": "Must Have",
+      "story_points": 5,
+      "effort_days": 3,
+      "req_ids": [
+        "FR-014",
+        "NFR-006"
+      ],
+      "module": "Collaboration",
+      "role": "Developer",
+      "technical_notes": "Connect to POST /api/v1/tasks/:id/share. Ensure keyboard navigation support.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_coll_005",
+      "title": "Design Comment Thread UI",
+      "description": "Create UI designs for threaded comments, including nesting, timestamps, and user avatars.",
+      "skill_required": "frontend",
+      "acceptance_criteria": [
+        "Design approved with clear visual hierarchy for nested comments."
+      ],
+      "depends_on": [],
+      "wbs_id": "WBS-COLL-005",
+      "priority": "Must Have",
+      "story_points": 3,
+      "effort_days": 2,
+      "req_ids": [
+        "FR-015",
+        "NFR-006"
+      ],
+      "module": "Collaboration",
+      "role": "Designer",
+      "technical_notes": "Focus on readability for deep nesting levels.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_coll_006",
+      "title": "Implement Comment CRUD API",
+      "description": "Develop endpoints for creating, updating, and deleting threaded comments with parent_comment_id support.",
+      "skill_required": "backend",
+      "acceptance_criteria": [
+        "Comments saved with correct parent linkage; soft delete supported; audit log updated."
+      ],
+      "depends_on": [
+        "wbs_coll_002"
+      ],
+      "wbs_id": "WBS-COLL-006",
+      "priority": "Must Have",
+      "story_points": 5,
+      "effort_days": 3,
+      "req_ids": [
+        "FR-015",
+        "NFR-004"
+      ],
+      "module": "Collaboration",
+      "role": "Developer",
+      "technical_notes": "Ensure self-referencing foreign key in Comment table.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_coll_007",
+      "title": "Build Comment Thread Frontend",
+      "description": "Implement React component for displaying and submitting threaded comments with real-time updates.",
+      "skill_required": "frontend",
+      "acceptance_criteria": [
+        "Comments render in correct thread order; new comments appear instantly; edit/delete functions work."
+      ],
+      "depends_on": [
+        "wbs_coll_005",
+        "wbs_coll_006"
+      ],
+      "wbs_id": "WBS-COLL-007",
+      "priority": "Must Have",
+      "story_points": 8,
+      "effort_days": 4,
+      "req_ids": [
+        "FR-015",
+        "NFR-006"
+      ],
+      "module": "Collaboration",
+      "role": "Developer",
+      "technical_notes": "Integrate WebSocket listener for real-time updates.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_coll_008",
+      "title": "Setup WebSocket Notification Service",
+      "description": "Configure Socket.io server to handle real-time events for comments and task assignments.",
+      "skill_required": "backend",
+      "acceptance_criteria": [
+        "Server accepts connections; emits events to specific user rooms; handles disconnects gracefully."
+      ],
+      "depends_on": [
+        "wbs_coll_006"
+      ],
+      "wbs_id": "WBS-COLL-008",
+      "priority": "Must Have",
+      "story_points": 5,
+      "effort_days": 3,
+      "req_ids": [
+        "FR-016",
+        "NFR-001"
+      ],
+      "module": "Collaboration",
+      "role": "Developer",
+      "technical_notes": "Ensure scalability for 1000 concurrent users (NFR-001).",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_coll_009",
+      "title": "Implement Real-time Notification UI",
+      "description": "Build in-app notification bell and toast system to display real-time updates for comments and assignments.",
+      "skill_required": "frontend",
+      "acceptance_criteria": [
+        "Notifications appear instantly upon event; unread count updates; clickable links navigate to task."
+      ],
+      "depends_on": [
+        "wbs_coll_008"
+      ],
+      "wbs_id": "WBS-COLL-009",
+      "priority": "Must Have",
+      "story_points": 5,
+      "effort_days": 3,
+      "req_ids": [
+        "FR-016",
+        "NFR-006"
+      ],
+      "module": "Collaboration",
+      "role": "Developer",
+      "technical_notes": "Use WebSocket client to subscribe to user-specific channels.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_coll_010",
+      "title": "Design Team Board Interface",
+      "description": "Create designs for team creation, member management, and team-level task board view.",
+      "skill_required": "frontend",
+      "acceptance_criteria": [
+        "Designs cover team creation flow and board layout; approved by PM."
+      ],
+      "depends_on": [],
+      "wbs_id": "WBS-COLL-010",
+      "priority": "Should Have",
+      "story_points": 3,
+      "effort_days": 2,
+      "req_ids": [
+        "FR-017",
+        "NFR-006"
+      ],
+      "module": "Collaboration",
+      "role": "Designer",
+      "technical_notes": "Assume flat team structure per GAP-004 constraints.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_coll_011",
+      "title": "Implement Team Management API",
+      "description": "Develop endpoints for creating teams, adding members, and assigning tasks to team boards.",
+      "skill_required": "backend",
+      "acceptance_criteria": [
+        "Teams created with unique IDs; members added successfully; tasks assignable to team context."
+      ],
+      "depends_on": [
+        "wbs_coll_002"
+      ],
+      "wbs_id": "WBS-COLL-011",
+      "priority": "Should Have",
+      "story_points": 5,
+      "effort_days": 3,
+      "req_ids": [
+        "FR-017",
+        "NFR-004"
+      ],
+      "module": "Collaboration",
+      "role": "Developer",
+      "technical_notes": "Implement Many-to-Many relationship between User and Team.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_coll_012",
+      "title": "QA Test Collaboration Features",
+      "description": "Execute test cases for sharing, comments, notifications, and team management including edge cases.",
+      "skill_required": "qa",
+      "acceptance_criteria": [
+        "All critical test cases passed; zero critical bugs; performance under 200ms for shared task queries."
+      ],
+      "depends_on": [
+        "wbs_coll_004",
+        "wbs_coll_007",
+        "wbs_coll_009",
+        "wbs_coll_011"
+      ],
+      "wbs_id": "WBS-COLL-012",
+      "priority": "Must Have",
+      "story_points": 8,
+      "effort_days": 4,
+      "req_ids": [
+        "FR-014",
+        "FR-015",
+        "FR-016",
+        "FR-017"
+      ],
+      "module": "Collaboration",
+      "role": "QA Engineer",
+      "technical_notes": "Verify ASM-001 assumption (existing users only) is enforced in tests.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_dash_001",
+      "title": "Design Dashboard Layout & Widgets",
+      "description": "Create high-fidelity UI mockups for the dashboard including task summary widgets, overdue counts, and activity feed, ensuring WCAG 2.1 AA compliance.",
+      "skill_required": "frontend",
+      "acceptance_criteria": [
+        "Design mockups approved by Product Owner and pass automated accessibility contrast checks."
+      ],
+      "depends_on": [],
+      "wbs_id": "WBS-DASH-001",
+      "priority": "Should Have",
+      "story_points": 5,
+      "effort_days": 3,
+      "req_ids": [
+        "FR-019",
+        "NFR-006"
+      ],
+      "module": "Dashboard & Reporting",
+      "role": "Designer",
+      "technical_notes": "Ensure layout is responsive; define color palette for status indicators (overdue, complete, etc.).",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_dash_002",
+      "title": "Implement Dashboard Data Aggregation API",
+      "description": "Develop backend endpoints to aggregate task counts by status, priority, and due date for the current user, optimizing SQL queries for performance.",
+      "skill_required": "backend",
+      "acceptance_criteria": [
+        "API returns aggregated data in <200ms for 95% of requests under load."
+      ],
+      "depends_on": [
+        "wbs_task_001"
+      ],
+      "wbs_id": "WBS-DASH-002",
+      "priority": "Should Have",
+      "story_points": 5,
+      "effort_days": 4,
+      "req_ids": [
+        "FR-019",
+        "NFR-002"
+      ],
+      "module": "Dashboard & Reporting",
+      "role": "Developer",
+      "technical_notes": "Use PostgreSQL aggregation functions; implement caching strategy if query complexity increases.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_dash_003",
+      "title": "Build Dashboard Widget Components",
+      "description": "Implement React components for displaying task summary widgets (counts, overdue, recent activity) using TypeScript and the design system.",
+      "skill_required": "frontend",
+      "acceptance_criteria": [
+        "Widgets render accurate data from API and meet WCAG 2.1 AA standards for screen readers."
+      ],
+      "depends_on": [
+        "wbs_dash_001",
+        "wbs_dash_002"
+      ],
+      "wbs_id": "WBS-DASH-003",
+      "priority": "Should Have",
+      "story_points": 5,
+      "effort_days": 4,
+      "req_ids": [
+        "FR-019",
+        "NFR-006"
+      ],
+      "module": "Dashboard & Reporting",
+      "role": "Developer",
+      "technical_notes": "Use React Query for data fetching; ensure loading states and error handling are implemented.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_dash_004",
+      "title": "Integrate Real-time Activity Feed",
+      "description": "Connect the dashboard activity feed to the WebSocket service to display real-time updates on shared task changes.",
+      "skill_required": "frontend",
+      "acceptance_criteria": [
+        "Activity feed updates instantly upon task changes without page refresh."
+      ],
+      "depends_on": [
+        "wbs_coll_001"
+      ],
+      "wbs_id": "WBS-DASH-004",
+      "priority": "Should Have",
+      "story_points": 3,
+      "effort_days": 3,
+      "req_ids": [
+        "FR-018",
+        "FR-019"
+      ],
+      "module": "Dashboard & Reporting",
+      "role": "Developer",
+      "technical_notes": "Subscribe to specific WebSocket channels based on user's shared tasks.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_dash_005",
+      "title": "Optimize Dashboard Query Performance",
+      "description": "Profile and optimize database queries used for dashboard widgets to ensure they meet the 200ms response time NFR under concurrent load.",
+      "skill_required": "database",
+      "acceptance_criteria": [
+        "Query execution time remains under 200ms with 1000 concurrent users in load test."
+      ],
+      "depends_on": [
+        "wbs_dash_002"
+      ],
+      "wbs_id": "WBS-DASH-005",
+      "priority": "Must Have",
+      "story_points": 3,
+      "effort_days": 2,
+      "req_ids": [
+        "NFR-002",
+        "FR-019"
+      ],
+      "module": "Dashboard & Reporting",
+      "role": "Developer",
+      "technical_notes": "Add necessary indexes on status, due_date, and created_at columns; review execution plans.",
+      "test_cases": [
+        {
+          "test_id": "TC-DA-007",
+          "test_name": "Happy path: Dashboard query executes under 200ms with realistic data volume",
+          "type": "Performance",
+          "priority": "Critical"
+        },
+        {
+          "test_id": "TC-DA-008",
+          "test_name": "Edge case: Dashboard query remains under 200ms with empty tables",
+          "type": "Performance",
+          "priority": "Medium"
+        },
+        {
+          "test_id": "TC-DA-009",
+          "test_name": "Failure scenario: Query exceeds 200ms without performance indexes; adding indexes brings it under limit",
+          "type": "Performance",
+          "priority": "High"
+        }
+      ]
+    },
+    {
+      "id": "wbs_dash_006",
+      "title": "Execute Accessibility Audit on Dashboard",
+      "description": "Perform manual and automated testing of the dashboard interface to ensure full compliance with WCAG 2.1 AA standards.",
+      "skill_required": "qa",
+      "acceptance_criteria": [
+        "Zero critical or major accessibility violations found in automated and manual audit."
+      ],
+      "depends_on": [
+        "wbs_dash_003"
+      ],
+      "wbs_id": "WBS-DASH-006",
+      "priority": "Must Have",
+      "story_points": 3,
+      "effort_days": 2,
+      "req_ids": [
+        "NFR-006",
+        "FR-019"
+      ],
+      "module": "Dashboard & Reporting",
+      "role": "QA Engineer",
+      "technical_notes": "Test with screen readers (NVDA/VoiceOver) and keyboard navigation only.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_dash_007",
+      "title": "Write Dashboard Integration Tests",
+      "description": "Create unit and integration tests for dashboard API endpoints and frontend widget components to ensure data accuracy and stability.",
+      "skill_required": "qa",
+      "acceptance_criteria": [
+        "Test coverage >80% for dashboard modules; all tests pass in CI pipeline."
+      ],
+      "depends_on": [
+        "wbs_dash_002",
+        "wbs_dash_003"
+      ],
+      "wbs_id": "WBS-DASH-007",
+      "priority": "Should Have",
+      "story_points": 3,
+      "effort_days": 2,
+      "req_ids": [
+        "FR-019",
+        "NFR-002"
+      ],
+      "module": "Dashboard & Reporting",
+      "role": "QA Engineer",
+      "technical_notes": "Mock external dependencies; test edge cases like empty task lists.",
+      "test_cases": []
+    },
+    {
+      "id": "wbs_dash_008",
+      "title": "Document Dashboard API & Usage",
+      "description": "Generate API documentation for dashboard endpoints and create user guide sections for interpreting dashboard widgets.",
+      "skill_required": "backend",
+      "acceptance_criteria": [
+        "Swagger/OpenAPI docs updated; user guide section published and reviewed."
+      ],
+      "depends_on": [
+        "wbs_dash_002"
+      ],
+      "wbs_id": "WBS-DASH-008",
+      "priority": "Could Have",
+      "story_points": 2,
+      "effort_days": 1,
+      "req_ids": [
+        "FR-019"
+      ],
+      "module": "Dashboard & Reporting",
+      "role": "Developer",
+      "technical_notes": "Include example responses and error codes for all dashboard endpoints.",
+      "test_cases": []
+    }
+  ],
+  "pipeline_outputs": {
+    "requirements": {
+      "project_meta": {
+        "name": "Task Management System",
+        "domain": "Productivity Software",
+        "timeline": "12 weeks",
+        "team_size": "5 developers (2 backend, 2 frontend, 1 QA)",
+        "tech_constraints": [
+          "Backend: Node.js with Express",
+          "Frontend: React with TypeScript",
+          "Database: PostgreSQL",
+          "Cloud: AWS",
+          "CI/CD: GitHub Actions"
+        ],
+        "budget": "$150,000"
+      },
+      "functional_requirements": [
+        {
+          "id": "FR-001",
+          "module": "User Management",
+          "requirement": "Users must register with email and password",
+          "priority": "High",
+          "source_section": "Functional Requirements - User Management"
+        },
+        {
+          "id": "FR-002",
+          "module": "User Management",
+          "requirement": "Users must login with email/password",
+          "priority": "High",
+          "source_section": "Functional Requirements - User Management"
+        },
+        {
+          "id": "FR-003",
+          "module": "User Management",
+          "requirement": "Users must reset forgotten passwords via email",
+          "priority": "High",
+          "source_section": "Functional Requirements - User Management"
+        },
+        {
+          "id": "FR-004",
+          "module": "User Management",
+          "requirement": "User profiles support name, avatar, preferences",
+          "priority": "Medium",
+          "source_section": "Functional Requirements - User Management"
+        },
+        {
+          "id": "FR-005",
+          "module": "User Management",
+          "requirement": "Admin users can manage all users and roles",
+          "priority": "Medium",
+          "source_section": "Functional Requirements - User Management"
+        },
+        {
+          "id": "FR-006",
+          "module": "Task Management",
+          "requirement": "Users create tasks with title, description, due date, priority, labels",
+          "priority": "High",
+          "source_section": "Functional Requirements - Task Management"
+        },
+        {
+          "id": "FR-007",
+          "module": "Task Management",
+          "requirement": "Users edit their own tasks",
+          "priority": "High",
+          "source_section": "Functional Requirements - Task Management"
+        },
+        {
+          "id": "FR-008",
+          "module": "Task Management",
+          "requirement": "Users delete their own tasks",
+          "priority": "Medium",
+          "source_section": "Functional Requirements - Task Management"
+        },
+        {
+          "id": "FR-009",
+          "module": "Task Management",
+          "requirement": "Users mark tasks as complete with completion notes",
+          "priority": "High",
+          "source_section": "Functional Requirements - Task Management"
+        },
+        {
+          "id": "FR-010",
+          "module": "Task Management",
+          "requirement": "Users filter tasks by status, priority, date range, label",
+          "priority": "High",
+          "source_section": "Functional Requirements - Task Management"
+        },
+        {
+          "id": "FR-011",
+          "module": "Task Management",
+          "requirement": "Users search tasks by title/description with full-text search",
+          "priority": "Medium",
+          "source_section": "Functional Requirements - Task Management"
+        },
+        {
+          "id": "FR-012",
+          "module": "Task Management",
+          "requirement": "Tasks support subtasks with completion tracking",
+          "priority": "Medium",
+          "source_section": "Functional Requirements - Task Management"
+        },
+        {
+          "id": "FR-013",
+          "module": "Task Management",
+          "requirement": "Users can set recurring tasks (weekly, monthly)",
+          "priority": "Low",
+          "source_section": "Functional Requirements - Task Management"
+        },
+        {
+          "id": "FR-014",
+          "module": "Collaboration",
+          "requirement": "Users share tasks with other users via email invite",
+          "priority": "High",
+          "source_section": "Functional Requirements - Collaboration"
+        },
+        {
+          "id": "FR-015",
+          "module": "Collaboration",
+          "requirement": "Users comment on shared tasks with threading",
+          "priority": "High",
+          "source_section": "Functional Requirements - Collaboration"
+        },
+        {
+          "id": "FR-016",
+          "module": "Collaboration",
+          "requirement": "Users receive real-time notifications for assignments and comments",
+          "priority": "High",
+          "source_section": "Functional Requirements - Collaboration"
+        },
+        {
+          "id": "FR-017",
+          "module": "Collaboration",
+          "requirement": "Users can create teams and team-level task boards",
+          "priority": "Medium",
+          "source_section": "Functional Requirements - Collaboration"
+        },
+        {
+          "id": "FR-018",
+          "module": "Collaboration",
+          "requirement": "Activity feed shows recent changes to shared tasks",
+          "priority": "Medium",
+          "source_section": "Functional Requirements - Collaboration"
+        },
+        {
+          "id": "FR-019",
+          "module": "Dashboard & Reporting",
+          "requirement": "Users see dashboard with task summary widgets",
+          "priority": "Medium",
+          "source_section": "Functional Requirements - Dashboard & Reporting"
+        },
+        {
+          "id": "FR-020",
+          "module": "Dashboard & Reporting",
+          "requirement": "Users generate task completion reports by date range",
+          "priority": "Low",
+          "source_section": "Functional Requirements - Dashboard & Reporting"
+        }
+      ],
+      "non_functional_requirements": [
+        {
+          "id": "NFR-001",
+          "category": "Performance",
+          "requirement": "Support 1000 concurrent users",
+          "metric": "1000 concurrent users",
+          "source_section": "Non-Functional Requirements"
+        },
+        {
+          "id": "NFR-002",
+          "category": "Performance",
+          "requirement": "API response under 200ms for 95% of requests",
+          "metric": "200ms for 95% of requests",
+          "source_section": "Non-Functional Requirements"
+        },
+        {
+          "id": "NFR-003",
+          "category": "Availability",
+          "requirement": "99.9% uptime monthly",
+          "metric": "99.9% uptime monthly",
+          "source_section": "Non-Functional Requirements"
+        },
+        {
+          "id": "NFR-004",
+          "category": "Security",
+          "requirement": "Passwords hashed with bcrypt, sessions with JWT",
+          "metric": "bcrypt hashing, JWT sessions",
+          "source_section": "Non-Functional Requirements"
+        },
+        {
+          "id": "NFR-005",
+          "category": "Security",
+          "requirement": "HTTPS encryption for all data in transit",
+          "metric": "HTTPS encryption",
+          "source_section": "Non-Functional Requirements"
+        },
+        {
+          "id": "NFR-006",
+          "category": "Usability",
+          "requirement": "WCAG 2.1 AA accessibility compliance",
+          "metric": "WCAG 2.1 AA",
+          "source_section": "Non-Functional Requirements"
+        },
+        {
+          "id": "NFR-007",
+          "category": "Compatibility",
+          "requirement": "Support for Firefox, Chrome, Safari, Edge",
+          "metric": "Firefox, Chrome, Safari, Edge",
+          "source_section": "Non-Functional Requirements"
+        }
+      ],
+      "integrations": [
+        {
+          "id": "INT-001",
+          "system": "SendGrid",
+          "purpose": "Email notifications",
+          "priority": "High",
+          "api_type": "REST"
+        },
+        {
+          "id": "INT-002",
+          "system": "AWS S3",
+          "purpose": "Avatar and file storage",
+          "priority": "High",
+          "api_type": "REST"
+        },
+        {
+          "id": "INT-003",
+          "system": "Sentry",
+          "purpose": "Error monitoring",
+          "priority": "Medium",
+          "api_type": "REST"
+        }
+      ],
+      "modules": [
+        "User Management",
+        "Task Management",
+        "Collaboration",
+        "Dashboard & Reporting"
+      ],
+      "gaps": [
+        {
+          "id": "GAP-001",
+          "type": "Ambiguity",
+          "description": "The BRD states 'Users share tasks with other users via email invite' but does not specify if the recipient must already be a registered user or if an account is created automatically upon acceptance.",
+          "impact": "May lead to incorrect implementation of the invitation flow and user onboarding logic.",
+          "suggested_clarification": "Should the email invite system create a new user account automatically if the recipient is not registered, or only allow invites to existing users?"
+        },
+        {
+          "id": "GAP-002",
+          "type": "Missing",
+          "description": "The BRD mentions 'Admin users can manage all users and roles' but does not define the specific roles available (e.g., Admin, Member, Guest) or the specific permissions associated with each role.",
+          "impact": "Development of the role-based access control (RBAC) system cannot be completed without defined role hierarchies and permissions.",
+          "suggested_clarification": "What are the specific user roles defined in the system and what permissions does each role possess?"
+        },
+        {
+          "id": "GAP-003",
+          "type": "Ambiguity",
+          "description": "The requirement 'Users receive real-time notifications' does not specify the delivery channels (e.g., in-app only, email, push notifications, SMS) beyond the SendGrid integration for email.",
+          "impact": "The real-time notification architecture (e.g., WebSocket implementation) may be over- or under-engineered based on missing channel requirements.",
+          "suggested_clarification": "Which specific channels must be supported for real-time notifications (e.g., in-app, email, push)?"
+        },
+        {
+          "id": "GAP-004",
+          "type": "Missing",
+          "description": "The BRD specifies 'Users can create teams' but does not define the limits on team size, the number of teams a user can join, or the hierarchy of teams (e.g., sub-teams).",
+          "impact": "Database schema design for team relationships and validation logic for team creation may be incomplete.",
+          "suggested_clarification": "Are there any limits on the number of teams a user can create or join, and is there a hierarchy for teams?"
+        },
+        {
+          "id": "GAP-005",
+          "type": "Technical Risk",
+          "description": "The BRD requires 'full-text search' for tasks but does not specify the search engine technology (e.g., PostgreSQL full-text search, Elasticsearch) or the scope of the search (e.g., across all tasks or only user's tasks).",
+          "impact": "Performance and scalability of the search feature may be compromised if the wrong technology is chosen or if the scope is misunderstood.",
+          "suggested_clarification": "Which technology should be used for full-text search, and should users search only their own tasks or all accessible tasks?"
+        }
+      ]
+    },
+    "scope": {
+      "in_scope": [
+        {
+          "req_id": "FR-001",
+          "feature": "User Registration",
+          "description": "Implement email and password registration flow with validation and account creation.",
+          "acceptance_criteria": "User can successfully register with valid email/password; invalid inputs are rejected; account created in DB.",
+          "phase": 1,
+          "priority": "Must Have"
+        },
+        {
+          "req_id": "FR-002",
+          "feature": "User Login",
+          "description": "Implement email/password authentication with JWT session generation.",
+          "acceptance_criteria": "Valid credentials return JWT; invalid credentials return 401; session persists across requests.",
+          "phase": 1,
+          "priority": "Must Have"
+        },
+        {
+          "req_id": "FR-003",
+          "feature": "Password Reset",
+          "description": "Implement forgot password flow triggering email via SendGrid with secure reset token.",
+          "acceptance_criteria": "Email sent with reset link; token valid for defined duration; password updated successfully.",
+          "phase": 1,
+          "priority": "Must Have"
+        },
+        {
+          "req_id": "FR-004",
+          "feature": "User Profile Management",
+          "description": "Allow users to update name, upload avatar (S3), and set preferences.",
+          "acceptance_criteria": "Profile data saved to DB; avatar stored in S3 and retrievable; preferences persist.",
+          "phase": 1,
+          "priority": "Should Have"
+        },
+        {
+          "req_id": "FR-005",
+          "feature": "Admin User Management",
+          "description": "Admin interface to view, edit, and manage user roles (RBAC implementation pending role definition).",
+          "acceptance_criteria": "Admin can view user list; Admin can modify user status/role (subject to role definition clarification).",
+          "phase": 1,
+          "priority": "Should Have"
+        },
+        {
+          "req_id": "FR-006",
+          "feature": "Task Creation",
+          "description": "Create tasks with title, description, due date, priority, and labels.",
+          "acceptance_criteria": "Task saved with all fields; validation enforced; task visible in user's list.",
+          "phase": 2,
+          "priority": "Must Have"
+        },
+        {
+          "req_id": "FR-007",
+          "feature": "Task Editing",
+          "description": "Allow users to update their own task details.",
+          "acceptance_criteria": "Changes saved; audit log updated; UI reflects changes immediately.",
+          "phase": 2,
+          "priority": "Must Have"
+        },
+        {
+          "req_id": "FR-008",
+          "feature": "Task Deletion",
+          "description": "Allow users to delete their own tasks (soft delete preferred for audit).",
+          "acceptance_criteria": "Task removed from active view; data retained in DB for history.",
+          "phase": 2,
+          "priority": "Should Have"
+        },
+        {
+          "req_id": "FR-009",
+          "feature": "Task Completion",
+          "description": "Mark tasks as complete with optional completion notes.",
+          "acceptance_criteria": "Status updated to 'Complete'; completion note saved; timestamp recorded.",
+          "phase": 2,
+          "priority": "Must Have"
+        },
+        {
+          "req_id": "FR-010",
+          "feature": "Task Filtering",
+          "description": "Filter task list by status, priority, date range, and label.",
+          "acceptance_criteria": "List updates dynamically based on selected filters; query performance <200ms.",
+          "phase": 2,
+          "priority": "Must Have"
+        },
+        {
+          "req_id": "FR-011",
+          "feature": "Full-Text Search",
+          "description": "Search tasks by title/description using PostgreSQL full-text search.",
+          "acceptance_criteria": "Search returns relevant results; performance meets NFR-002.",
+          "phase": 2,
+          "priority": "Should Have"
+        },
+        {
+          "req_id": "FR-012",
+          "feature": "Subtasks",
+          "description": "Create subtasks under parent tasks with individual completion tracking.",
+          "acceptance_criteria": "Subtasks linked to parent; parent completion logic reflects subtask status.",
+          "phase": 2,
+          "priority": "Should Have"
+        },
+        {
+          "req_id": "FR-014",
+          "feature": "Task Sharing via Email",
+          "description": "Share tasks with other users via email invite (logic pending GAP-001 clarification).",
+          "acceptance_criteria": "Invite email sent via SendGrid; recipient can access task upon acceptance.",
+          "phase": 3,
+          "priority": "Must Have"
+        },
+        {
+          "req_id": "FR-015",
+          "feature": "Task Comments",
+          "description": "Threaded commenting system on shared tasks.",
+          "acceptance_criteria": "Comments displayed in thread order; real-time updates visible to sharers.",
+          "phase": 3,
+          "priority": "Must Have"
+        },
+        {
+          "req_id": "FR-016",
+          "feature": "Real-time Notifications",
+          "description": "In-app notifications for assignments and comments (email via SendGrid for critical alerts).",
+          "acceptance_criteria": "Notification appears instantly on UI; email sent for critical events.",
+          "phase": 3,
+          "priority": "Must Have"
+        },
+        {
+          "req_id": "FR-017",
+          "feature": "Team Management",
+          "description": "Create teams and assign team-level task boards (limits pending GAP-004 clarification).",
+          "acceptance_criteria": "Team created; board visible to team members; tasks assignable to team.",
+          "phase": 3,
+          "priority": "Should Have"
+        },
+        {
+          "req_id": "FR-018",
+          "feature": "Activity Feed",
+          "description": "Display recent changes to shared tasks in an activity feed.",
+          "acceptance_criteria": "Feed updates in real-time; shows user, action, and timestamp.",
+          "phase": 3,
+          "priority": "Should Have"
+        },
+        {
+          "req_id": "FR-019",
+          "feature": "Dashboard Widgets",
+          "description": "Dashboard displaying task summary widgets (counts, overdue, etc.).",
+          "acceptance_criteria": "Widgets render accurate data; load time <200ms.",
+          "phase": 4,
+          "priority": "Should Have"
+        },
+        {
+          "req_id": "NFR-001",
+          "feature": "Performance Scalability",
+          "description": "System architecture supporting 1000 concurrent users.",
+          "acceptance_criteria": "Load test passes with 1000 concurrent users; error rate <1%.",
+          "phase": 5,
+          "priority": "Must Have"
+        },
+        {
+          "req_id": "NFR-004",
+          "feature": "Security Implementation",
+          "description": "Password hashing (bcrypt) and JWT session management.",
+          "acceptance_criteria": "Passwords stored as hashes; JWT validation enforced on all protected routes.",
+          "phase": 1,
+          "priority": "Must Have"
+        },
+        {
+          "req_id": "NFR-006",
+          "feature": "Accessibility Compliance",
+          "description": "UI implementation meeting WCAG 2.1 AA standards.",
+          "acceptance_criteria": "Automated and manual audit passes WCAG 2.1 AA criteria.",
+          "phase": 4,
+          "priority": "Must Have"
+        }
+      ],
+      "out_of_scope": [
+        {
+          "feature": "Recurring Tasks (Weekly/Monthly)",
+          "reason": "FR-013 is marked as Low Priority and the 12-week timeline with 5 developers requires focusing on High/Medium priority features to meet the launch deadline.",
+          "future_phase": "Phase 2 (Post-Launch)"
+        },
+        {
+          "feature": "Task Completion Reports",
+          "reason": "FR-020 is marked as Low Priority; dashboard widgets (FR-019) provide sufficient summary data for the MVP launch.",
+          "future_phase": "Phase 2 (Post-Launch)"
+        },
+        {
+          "feature": "Push Notifications (Mobile)",
+          "reason": "BRD specifies SendGrid for email and does not explicitly mandate mobile push notification services (e.g., Firebase/APNS) within the current scope or budget.",
+          "future_phase": "Phase 2 (Mobile App Expansion)"
+        },
+        {
+          "feature": "SMS Notifications",
+          "reason": "BRD only specifies SendGrid (Email) and does not include SMS gateway integration requirements.",
+          "future_phase": "Phase 2"
+        },
+        {
+          "feature": "Advanced Team Hierarchy",
+          "reason": "GAP-004 indicates missing requirements for team hierarchy; scope limited to flat team creation until clarified.",
+          "future_phase": "Phase 2 (After Requirement Clarification)"
+        }
+      ],
+      "assumptions": [
+        {
+          "id": "ASM-001",
+          "assumption": "Email invites (FR-014) will only be sent to users who already have an account in the system.",
+          "impact_if_wrong": "If auto-registration is required, the user onboarding flow and database schema will need significant rework, delaying Phase 3.",
+          "owner": "Product Owner"
+        },
+        {
+          "id": "ASM-002",
+          "assumption": "PostgreSQL full-text search is sufficient to meet NFR-002 (200ms response) for the expected data volume.",
+          "impact_if_wrong": "If performance degrades, a dedicated search engine (Elasticsearch) may be required, increasing cost and complexity.",
+          "owner": "Lead Backend Developer"
+        },
+        {
+          "id": "ASM-003",
+          "assumption": "The 'Admin' role (FR-005) will have a fixed set of permissions defined before Phase 1 development concludes.",
+          "impact_if_wrong": "RBAC implementation will be delayed or require refactoring if roles are undefined.",
+          "owner": "Product Owner"
+        },
+        {
+          "id": "ASM-004",
+          "assumption": "AWS credits will cover the infrastructure costs for the 12-week development and testing period.",
+          "impact_if_wrong": "Budget overrun requiring immediate cost-cutting measures or additional funding.",
+          "owner": "Project Manager"
+        }
+      ],
+      "constraints": [
+        {
+          "id": "CON-001",
+          "constraint": "Fixed 12-week timeline with 5 developers.",
+          "source": "Business",
+          "impact": "Low priority features (FR-013, FR-020) must be excluded to ensure on-time delivery of High/Medium priority items."
+        },
+        {
+          "id": "CON-002",
+          "constraint": "Technology Stack: Node.js/Express, React/TypeScript, PostgreSQL, AWS.",
+          "source": "Technical",
+          "impact": "No flexibility to introduce new languages or databases; all solutions must fit within this stack."
+        },
+        {
+          "id": "CON-003",
+          "constraint": "Budget Cap: $150,000.",
+          "source": "Business",
+          "impact": "Limits ability to hire external contractors or purchase premium third-party services beyond existing contracts."
+        },
+        {
+          "id": "CON-004",
+          "constraint": "NFR-002: API response under 200ms for 95% of requests.",
+          "source": "Technical",
+          "impact": "Database queries and API design must be highly optimized; complex joins or unoptimized search may violate this constraint."
+        }
+      ],
+      "dependencies": [
+        {
+          "id": "DEP-001",
+          "from_feature": "User Registration (FR-001)",
+          "to_feature": "Task Creation (FR-006)",
+          "type": "blocks",
+          "critical_path": true
+        },
+        {
+          "id": "DEP-002",
+          "from_feature": "Task Creation (FR-006)",
+          "to_feature": "Task Sharing (FR-014)",
+          "type": "blocks",
+          "critical_path": true
+        },
+        {
+          "id": "DEP-003",
+          "from_feature": "Task Sharing (FR-014)",
+          "to_feature": "Task Comments (FR-015)",
+          "type": "blocks",
+          "critical_path": true
+        },
+        {
+          "id": "DEP-004",
+          "from_feature": "User Management (FR-001 to FR-005)",
+          "to_feature": "Admin User Management (FR-005)",
+          "type": "enables",
+          "critical_path": false
+        },
+        {
+          "id": "DEP-005",
+          "from_feature": "Task Completion (FR-009)",
+          "to_feature": "Dashboard Widgets (FR-019)",
+          "type": "enables",
+          "critical_path": false
+        }
+      ],
+      "client_signoff_questions": [
+        {
+          "question": "For FR-014 (Task Sharing), should the email invite system automatically create a new user account if the recipient is not registered, or restrict sharing to existing users only?",
+          "why_important": "This determines the complexity of the invitation flow and user onboarding logic (GAP-001)."
+        },
+        {
+          "question": "What are the specific user roles (e.g., Admin, Member, Guest) and their associated permissions for FR-005 (Admin User Management)?",
+          "why_important": "Without defined roles, the RBAC system cannot be fully implemented (GAP-002)."
+        },
+        {
+          "question": "For FR-016 (Real-time Notifications), are in-app notifications sufficient, or are email/push notifications required for all events?",
+          "why_important": "This impacts the notification architecture and integration scope (GAP-003)."
+        },
+        {
+          "question": "Are there any limits on the number of teams a user can create or join, and is a team hierarchy required for FR-017?",
+          "why_important": "This affects database schema design and validation logic (GAP-004)."
+        },
+        {
+          "question": "For FR-011 (Full-Text Search), should users search only their own tasks or all tasks they have access to via sharing?",
+          "why_important": "This defines the search scope and performance requirements (GAP-005)."
+        }
+      ]
+    },
+    "proposal": {
+      "executive_summary": "This proposal outlines the development of a comprehensive Task Management System designed to enhance team productivity through real-time collaboration, secure task tracking, and intuitive user management. Over a 12-week period, we will deliver a robust platform built on your existing technology stack (Node.js, React, PostgreSQL, AWS), enabling users to create, organize, and share tasks while maintaining strict security and performance standards. The solution focuses on high-priority features such as user authentication, core task lifecycle management, and team collaboration tools, ensuring a market-ready product within the defined budget of $150,000.",
+      "objectives": [
+        {
+          "id": "OBJ-001",
+          "objective": "Enable secure and seamless user onboarding and management",
+          "success_metric": "100% of users can register, login, and reset passwords without assistance; 99.9% uptime for authentication services."
+        },
+        {
+          "id": "OBJ-002",
+          "objective": "Streamline task creation, tracking, and completion workflows",
+          "success_metric": "95% of beta testers can create and complete tasks without assistance; API response times under 200ms for 95% of requests."
+        },
+        {
+          "id": "OBJ-003",
+          "objective": "Facilitate real-time team collaboration and visibility",
+          "success_metric": "Real-time notifications and comments function with zero latency for shared tasks; 100% of shared tasks support threaded discussions."
+        },
+        {
+          "id": "OBJ-004",
+          "objective": "Ensure system scalability and security compliance",
+          "success_metric": "System supports 1000 concurrent users; 100% compliance with WCAG 2.1 AA accessibility standards; zero critical security vulnerabilities at launch."
+        }
+      ],
+      "deliverables": [
+        {
+          "id": "DLV-001",
+          "deliverable": "User Authentication and Profile Management Module",
+          "req_ids": [
+            "FR-001",
+            "FR-002",
+            "FR-003",
+            "FR-004",
+            "FR-005",
+            "NFR-004"
+          ],
+          "phase": 1,
+          "acceptance_criteria": "Users can register, login, and reset passwords via email; profiles support avatars stored in S3; Admin interface allows user management; passwords hashed with bcrypt and sessions managed via JWT."
+        },
+        {
+          "id": "DLV-002",
+          "deliverable": "Core Task Management Engine",
+          "req_ids": [
+            "FR-006",
+            "FR-007",
+            "FR-008",
+            "FR-009",
+            "FR-010",
+            "FR-011",
+            "FR-012"
+          ],
+          "phase": 2,
+          "acceptance_criteria": "Users can create, edit, delete, and complete tasks with subtasks; filtering and full-text search (PostgreSQL) return results under 200ms; soft delete implemented for audit trails."
+        },
+        {
+          "id": "DLV-003",
+          "deliverable": "Collaboration and Notification System",
+          "req_ids": [
+            "FR-014",
+            "FR-015",
+            "FR-016",
+            "FR-017",
+            "FR-018",
+            "INT-001"
+          ],
+          "phase": 3,
+          "acceptance_criteria": "Tasks can be shared via email invite (to existing users); threaded comments function in real-time; in-app notifications trigger instantly for assignments and comments; team boards are created and accessible."
+        },
+        {
+          "id": "DLV-004",
+          "deliverable": "Dashboard, Reporting, and Accessibility Compliance",
+          "req_ids": [
+            "FR-019",
+            "NFR-006",
+            "NFR-007"
+          ],
+          "phase": 4,
+          "acceptance_criteria": "Dashboard widgets display accurate task summaries; UI passes WCAG 2.1 AA audit; application is fully functional across Firefox, Chrome, Safari, and Edge."
+        },
+        {
+          "id": "DLV-005",
+          "deliverable": "Performance Optimization and Launch Readiness",
+          "req_ids": [
+            "NFR-001",
+            "NFR-002",
+            "NFR-003",
+            "INT-003"
+          ],
+          "phase": 5,
+          "acceptance_criteria": "Load testing confirms support for 1000 concurrent users with <1% error rate; Sentry error monitoring integrated; 99.9% uptime achieved during stress testing."
+        }
+      ],
+      "timeline": {
+        "phases": [
+          {
+            "phase": 1,
+            "name": "Setup & User Management",
+            "duration_weeks": 2,
+            "deliverables": [
+              "DLV-001"
+            ],
+            "milestones": [
+              "User Registration and Login Flow Complete",
+              "Security Implementation (JWT/Bcrypt) Verified"
+            ]
+          },
+          {
+            "phase": 2,
+            "name": "Core Task CRUD",
+            "duration_weeks": 2,
+            "deliverables": [
+              "DLV-002"
+            ],
+            "milestones": [
+              "Task Creation and Completion Logic Live",
+              "Search and Filtering Performance Benchmarked"
+            ]
+          },
+          {
+            "phase": 3,
+            "name": "Collaboration Features",
+            "duration_weeks": 2,
+            "deliverables": [
+              "DLV-003"
+            ],
+            "milestones": [
+              "Task Sharing and Email Invites Functional",
+              "Real-time Notifications and Comments Active"
+            ]
+          },
+          {
+            "phase": 4,
+            "name": "Dashboard & Accessibility",
+            "duration_weeks": 2,
+            "deliverables": [
+              "DLV-004"
+            ],
+            "milestones": [
+              "Dashboard Widgets Rendering Data",
+              "WCAG 2.1 AA Compliance Audit Passed"
+            ]
+          },
+          {
+            "phase": 5,
+            "name": "Testing, Optimization & Launch",
+            "duration_weeks": 4,
+            "deliverables": [
+              "DLV-005"
+            ],
+            "milestones": [
+              "1000 Concurrent User Load Test Passed",
+              "Production Deployment and Go-Live"
+            ]
+          }
+        ],
+        "total_duration_weeks": 12
+      },
+      "team_structure": [
+        {
+          "role": "Backend Developer",
+          "responsibilities": [
+            "Develop Node.js/Express APIs",
+            "Implement PostgreSQL database schema and queries",
+            "Integrate SendGrid and AWS S3",
+            "Ensure security (bcrypt, JWT) and performance optimization"
+          ],
+          "allocation_percent": 100
+        },
+        {
+          "role": "Backend Developer",
+          "responsibilities": [
+            "Develop Node.js/Express APIs",
+            "Implement real-time notification logic",
+            "Support database optimization for search and filtering",
+            "Assist with CI/CD pipeline configuration"
+          ],
+          "allocation_percent": 100
+        },
+        {
+          "role": "Frontend Developer",
+          "responsibilities": [
+            "Build React/TypeScript user interfaces",
+            "Implement responsive design and accessibility (WCAG 2.1 AA)",
+            "Integrate real-time WebSocket connections for collaboration",
+            "Develop dashboard widgets and task views"
+          ],
+          "allocation_percent": 100
+        },
+        {
+          "role": "Frontend Developer",
+          "responsibilities": [
+            "Build React/TypeScript user interfaces",
+            "Implement task management forms and filtering logic",
+            "Ensure cross-browser compatibility (Chrome, Firefox, Safari, Edge)",
+            "Collaborate on UI/UX refinement"
+          ],
+          "allocation_percent": 100
+        },
+        {
+          "role": "QA Engineer",
+          "responsibilities": [
+            "Execute functional and regression testing",
+            "Perform load testing for 1000 concurrent users",
+            "Validate accessibility compliance",
+            "Manage bug tracking and verification"
+          ],
+          "allocation_percent": 100
+        }
+      ],
+      "risks": [
+        {
+          "id": "RSK-001",
+          "risk": "Ambiguity in Task Sharing logic (GAP-001) regarding whether email invites create new accounts or require existing users.",
+          "probability": "High",
+          "impact": "High",
+          "mitigation": "Immediate clarification required from the Product Owner before Phase 3 development begins; current scope assumes invites are for existing users only."
+        },
+        {
+          "id": "RSK-002",
+          "risk": "Undefined User Roles and Permissions (GAP-002) may delay the implementation of the Admin User Management feature.",
+          "probability": "Medium",
+          "impact": "High",
+          "mitigation": "Define specific roles (e.g., Admin, Member) and permissions in the first week to ensure RBAC implementation aligns with Phase 1 deliverables."
+        },
+        {
+          "id": "RSK-003",
+          "risk": "PostgreSQL full-text search performance may not meet the 200ms response time requirement (NFR-002) under high load.",
+          "probability": "Medium",
+          "impact": "Medium",
+          "mitigation": "Conduct early performance prototyping in Phase 2; if benchmarks are missed, optimize queries or consider indexing strategies immediately."
+        },
+        {
+          "id": "RSK-004",
+          "risk": "Scope creep due to undefined team hierarchy limits (GAP-004) potentially expanding the complexity of the Team Management feature.",
+          "probability": "Low",
+          "impact": "Medium",
+          "mitigation": "Strictly limit initial implementation to flat team creation as per current assumptions; defer hierarchy features to Phase 2 pending clarification."
+        }
+      ],
+      "next_steps": [
+        "Schedule a kickoff meeting to resolve GAP-001 (Task Sharing logic) and GAP-002 (User Roles definition).",
+        "Confirm AWS infrastructure setup and SendGrid API key availability for the development environment.",
+        "Finalize the detailed project schedule and assign specific tasks to the 5-person development team."
+      ]
+    },
+    "architecture": {
+      "architecture_pattern": "Modular Monolith",
+      "justification": "Given the 12-week timeline, 5-person team, and $150k budget, a Modular Monolith is the optimal choice. It avoids the operational overhead and complexity of microservices while enforcing clear boundaries between User, Task, and Collaboration modules. This pattern allows the team to move fast, share a single database (PostgreSQL) for transactional integrity (critical for task assignments and comments), and deploy a single artifact, meeting the NFR-003 uptime and NFR-002 latency requirements without over-engineering.",
+      "components": [
+        {
+          "name": "API Gateway & Auth Service",
+          "responsibility": "Handles all incoming HTTP requests, JWT validation, rate limiting, and routing to internal modules. Manages User Registration, Login, and Password Reset flows.",
+          "technology": "Node.js, Express, jsonwebtoken, bcrypt",
+          "req_ids": [
+            "FR-001",
+            "FR-002",
+            "FR-003",
+            "NFR-004",
+            "NFR-005"
+          ],
+          "dependencies": []
+        },
+        {
+          "name": "User Profile Module",
+          "responsibility": "Manages user profile data, avatar uploads to S3, and preference storage. Includes Admin user management logic.",
+          "technology": "Node.js, Express, AWS SDK (S3)",
+          "req_ids": [
+            "FR-004",
+            "FR-005",
+            "INT-002"
+          ],
+          "dependencies": [
+            "API Gateway & Auth Service"
+          ]
+        },
+        {
+          "name": "Task Core Module",
+          "responsibility": "Handles CRUD operations for tasks, subtasks, filtering, and full-text search. Enforces ownership and soft-delete logic.",
+          "technology": "Node.js, Express, PostgreSQL (pg), pg-tsvector",
+          "req_ids": [
+            "FR-006",
+            "FR-007",
+            "FR-008",
+            "FR-009",
+            "FR-010",
+            "FR-011",
+            "FR-012"
+          ],
+          "dependencies": [
+            "API Gateway & Auth Service"
+          ]
+        },
+        {
+          "name": "Collaboration Module",
+          "responsibility": "Manages task sharing, team creation, threaded comments, and activity feed generation. Handles email invites via SendGrid.",
+          "technology": "Node.js, Express, SendGrid API, WebSocket (ws)",
+          "req_ids": [
+            "FR-014",
+            "FR-015",
+            "FR-016",
+            "FR-017",
+            "FR-018",
+            "INT-001"
+          ],
+          "dependencies": [
+            "Task Core Module",
+            "User Profile Module"
+          ]
+        },
+        {
+          "name": "Dashboard & Reporting Module",
+          "responsibility": "Aggregates task data to generate summary widgets and activity feeds for the user dashboard.",
+          "technology": "Node.js, Express, PostgreSQL (Aggregations)",
+          "req_ids": [
+            "FR-019",
+            "NFR-002"
+          ],
+          "dependencies": [
+            "Task Core Module",
+            "Collaboration Module"
+          ]
+        },
+        {
+          "name": "Notification Service",
+          "responsibility": "Processes real-time events (comments, assignments) and pushes updates via WebSocket and triggers email alerts via SendGrid.",
+          "technology": "Node.js, Socket.io, SendGrid API",
+          "req_ids": [
+            "FR-016",
+            "INT-001"
+          ],
+          "dependencies": [
+            "Collaboration Module"
+          ]
+        }
+      ],
+      "tech_stack": {
+        "backend": {
+          "language": "Node.js",
+          "framework": "Express.js",
+          "justification": "Mandated by BRD constraints and team expertise. Express provides the flexibility to build a modular monolith quickly within the 12-week timeline."
+        },
+        "frontend": {
+          "language": "TypeScript",
+          "framework": "React",
+          "justification": "Mandated by BRD constraints. TypeScript ensures type safety for complex task data structures, and React is the company standard."
+        },
+        "database": {
+          "type": "SQL",
+          "product": "PostgreSQL",
+          "justification": "Mandated by BRD. PostgreSQL is chosen for its robust relational integrity (critical for task relationships), JSONB support for flexible preferences, and built-in full-text search capabilities (tsvector) to meet NFR-002 without external search engines."
+        },
+        "infrastructure": {
+          "platform": "AWS",
+          "key_services": [
+            "EC2 (or Elastic Beanstalk for simplified deployment)",
+            "RDS (PostgreSQL)",
+            "S3 (Avatar/File Storage)",
+            "CloudFront (Static Assets)",
+            "Route53 (DNS)",
+            "AWS Certificate Manager (SSL/TLS)"
+          ],
+          "justification": "Mandated by BRD. Using existing AWS credits and services minimizes setup time. RDS ensures high availability (NFR-003) and managed backups."
+        }
+      },
+      "apis": [
+        {
+          "method": "POST",
+          "endpoint": "/api/v1/auth/register",
+          "description": "Register a new user with email and password.",
+          "req_id": "FR-001",
+          "auth_required": false,
+          "rate_limit": "10/min"
+        },
+        {
+          "method": "POST",
+          "endpoint": "/api/v1/auth/login",
+          "description": "Authenticate user and return JWT.",
+          "req_id": "FR-002",
+          "auth_required": false,
+          "rate_limit": "5/min"
+        },
+        {
+          "method": "POST",
+          "endpoint": "/api/v1/auth/forgot-password",
+          "description": "Initiate password reset via email.",
+          "req_id": "FR-003",
+          "auth_required": false,
+          "rate_limit": "5/hour"
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/v1/users/profile",
+          "description": "Retrieve current user profile.",
+          "req_id": "FR-004",
+          "auth_required": true,
+          "rate_limit": "60/min"
+        },
+        {
+          "method": "PUT",
+          "endpoint": "/api/v1/users/profile",
+          "description": "Update user profile and upload avatar.",
+          "req_id": "FR-004",
+          "auth_required": true,
+          "rate_limit": "20/min"
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/v1/admin/users",
+          "description": "List all users (Admin only).",
+          "req_id": "FR-005",
+          "auth_required": true,
+          "rate_limit": "30/min"
+        },
+        {
+          "method": "POST",
+          "endpoint": "/api/v1/tasks",
+          "description": "Create a new task with title, description, due date, priority, labels.",
+          "req_id": "FR-006",
+          "auth_required": true,
+          "rate_limit": "60/min"
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/v1/tasks",
+          "description": "List tasks with filtering (status, priority, date, label) and search.",
+          "req_id": "FR-010",
+          "auth_required": true,
+          "rate_limit": "100/min"
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/v1/tasks/search",
+          "description": "Full-text search tasks by title/description.",
+          "req_id": "FR-011",
+          "auth_required": true,
+          "rate_limit": "60/min"
+        },
+        {
+          "method": "PUT",
+          "endpoint": "/api/v1/tasks/:id",
+          "description": "Update task details.",
+          "req_id": "FR-007",
+          "auth_required": true,
+          "rate_limit": "60/min"
+        },
+        {
+          "method": "DELETE",
+          "endpoint": "/api/v1/tasks/:id",
+          "description": "Soft delete a task.",
+          "req_id": "FR-008",
+          "auth_required": true,
+          "rate_limit": "30/min"
+        },
+        {
+          "method": "POST",
+          "endpoint": "/api/v1/tasks/:id/complete",
+          "description": "Mark task as complete with optional note.",
+          "req_id": "FR-009",
+          "auth_required": true,
+          "rate_limit": "60/min"
+        },
+        {
+          "method": "POST",
+          "endpoint": "/api/v1/tasks/:id/subtasks",
+          "description": "Create a subtask under a parent task.",
+          "req_id": "FR-012",
+          "auth_required": true,
+          "rate_limit": "60/min"
+        },
+        {
+          "method": "POST",
+          "endpoint": "/api/v1/tasks/:id/share",
+          "description": "Share task with another user via email invite.",
+          "req_id": "FR-014",
+          "auth_required": true,
+          "rate_limit": "20/min"
+        },
+        {
+          "method": "POST",
+          "endpoint": "/api/v1/tasks/:id/comments",
+          "description": "Add a threaded comment to a task.",
+          "req_id": "FR-015",
+          "auth_required": true,
+          "rate_limit": "60/min"
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/v1/teams",
+          "description": "List teams the user belongs to.",
+          "req_id": "FR-017",
+          "auth_required": true,
+          "rate_limit": "30/min"
+        },
+        {
+          "method": "POST",
+          "endpoint": "/api/v1/teams",
+          "description": "Create a new team.",
+          "req_id": "FR-017",
+          "auth_required": true,
+          "rate_limit": "10/min"
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/v1/dashboard",
+          "description": "Get dashboard summary widgets.",
+          "req_id": "FR-019",
+          "auth_required": true,
+          "rate_limit": "30/min"
+        },
+        {
+          "method": "GET",
+          "endpoint": "/api/v1/activity",
+          "description": "Get recent activity feed for shared tasks.",
+          "req_id": "FR-018",
+          "auth_required": true,
+          "rate_limit": "60/min"
+        }
+      ],
+      "data_model": [
+        {
+          "entity": "User",
+          "attributes": [
+            "id (UUID)",
+            "email (Unique)",
+            "password_hash",
+            "name",
+            "avatar_url",
+            "preferences (JSONB)",
+            "role (Enum: Admin, Member)",
+            "created_at",
+            "updated_at"
+          ],
+          "relationships": [
+            "One-to-Many with Task (creator)",
+            "One-to-Many with Comment",
+            "Many-to-Many with Team"
+          ]
+        },
+        {
+          "entity": "Task",
+          "attributes": [
+            "id (UUID)",
+            "title",
+            "description",
+            "due_date",
+            "priority (Enum)",
+            "status (Enum: Todo, InProgress, Done)",
+            "labels (Array/JSONB)",
+            "completion_note",
+            "is_deleted (Boolean)",
+            "created_by_id (FK)",
+            "created_at",
+            "updated_at"
+          ],
+          "relationships": [
+            "Many-to-One with User (creator)",
+            "One-to-Many with Subtask",
+            "Many-to-Many with User (assignees/sharers)",
+            "One-to-Many with Comment"
+          ]
+        },
+        {
+          "entity": "Subtask",
+          "attributes": [
+            "id (UUID)",
+            "title",
+            "is_completed",
+            "task_id (FK)",
+            "created_by_id (FK)",
+            "created_at"
+          ],
+          "relationships": [
+            "Many-to-One with Task"
+          ]
+        },
+        {
+          "entity": "Comment",
+          "attributes": [
+            "id (UUID)",
+            "content",
+            "task_id (FK)",
+            "user_id (FK)",
+            "parent_comment_id (FK, Self-join for threading)",
+            "created_at"
+          ],
+          "relationships": [
+            "Many-to-One with Task",
+            "Many-to-One with User",
+            "Self-referencing for threading"
+          ]
+        },
+        {
+          "entity": "Team",
+          "attributes": [
+            "id (UUID)",
+            "name",
+            "created_by_id (FK)",
+            "created_at"
+          ],
+          "relationships": [
+            "Many-to-Many with User (members)",
+            "One-to-Many with Task (team tasks)"
+          ]
+        },
+        {
+          "entity": "ActivityLog",
+          "attributes": [
+            "id (UUID)",
+            "user_id (FK)",
+            "task_id (FK)",
+            "action_type (Enum)",
+            "metadata (JSONB)",
+            "created_at"
+          ],
+          "relationships": [
+            "Many-to-One with User",
+            "Many-to-One with Task"
+          ]
+        }
+      ],
+      "security": {
+        "authentication": "JWT (JSON Web Tokens) with short-lived access tokens and refresh tokens stored in HttpOnly cookies.",
+        "authorization": "Role-Based Access Control (RBAC) middleware checking user roles (Admin/Member) and task ownership before allowing operations.",
+        "data_encryption": "Passwords hashed with bcrypt (NFR-004). All data in transit encrypted via HTTPS (NFR-005). S3 buckets configured for private access with pre-signed URLs for avatar uploads.",
+        "nfr_compliance": [
+          "NFR-004",
+          "NFR-005"
+        ]
+      },
+      "needs_further_design": [
+        {
+          "area": "Task Sharing Logic (FR-014)",
+          "reason": "Ambiguity exists regarding whether email invites create new accounts or require existing users (GAP-001). This impacts the database schema for invitations and the user onboarding flow.",
+          "owner": "Product Owner"
+        },
+        {
+          "area": "Role Definitions (FR-005)",
+          "reason": "Specific roles and permissions for Admin vs. Member are not defined (GAP-002), preventing finalization of the RBAC middleware logic.",
+          "owner": "Product Owner"
+        },
+        {
+          "area": "Search Scope (FR-011)",
+          "reason": "It is unclear if full-text search should be limited to the user's own tasks or include all shared tasks (GAP-005), which affects query complexity and performance optimization.",
+          "owner": "Lead Backend Developer"
+        }
+      ]
+    },
+    "sow": {
+      "document_meta": {
+        "document_id": "SOW-001",
+        "version": "1.0",
+        "date": "2023-10-27",
+        "client": "Client Name",
+        "vendor": "Vendor Name"
+      },
+      "project_overview": "This Statement of Work defines the engagement for the development of a comprehensive Task Management System. The project aims to deliver a secure, scalable, and collaborative productivity platform enabling teams to create, organize, and track tasks with real-time features. The solution will be built using the client's mandated technology stack (Node.js, React, PostgreSQL, AWS) over a 12-week period, adhering to a fixed budget of $150,000. The system will support user authentication, core task lifecycle management, team collaboration via sharing and comments, and dashboard reporting, ensuring compliance with WCAG 2.1 AA accessibility standards and supporting 1000 concurrent users.",
+      "objectives": [
+        {
+          "id": "OBJ-001",
+          "objective": "Enable secure and seamless user onboarding and management",
+          "success_criteria": "100% of users can register, login, and reset passwords without assistance; 99.9% uptime for authentication services."
+        },
+        {
+          "id": "OBJ-002",
+          "objective": "Streamline task creation, tracking, and completion workflows",
+          "success_criteria": "95% of beta testers can create and complete tasks without assistance; API response times under 200ms for 95% of requests."
+        },
+        {
+          "id": "OBJ-003",
+          "objective": "Facilitate real-time team collaboration and visibility",
+          "success_criteria": "Real-time notifications and comments function with zero latency for shared tasks; 100% of shared tasks support threaded discussions."
+        },
+        {
+          "id": "OBJ-004",
+          "objective": "Ensure system scalability and security compliance",
+          "success_criteria": "System supports 1000 concurrent users; 100% compliance with WCAG 2.1 AA accessibility standards; zero critical security vulnerabilities at launch."
+        }
+      ],
+      "scope_of_work": {
+        "in_scope": [
+          "User Registration, Login, and Password Reset with JWT/Bcrypt security",
+          "User Profile Management including Avatar upload to S3",
+          "Admin User Management interface (RBAC pending role definition)",
+          "Task Creation, Editing, Deletion (Soft Delete), and Completion with notes",
+          "Task Filtering and Full-Text Search using PostgreSQL",
+          "Subtask creation and completion tracking",
+          "Task Sharing via Email Invite (to existing users only)",
+          "Threaded Comments on shared tasks",
+          "Real-time In-App Notifications for assignments and comments",
+          "Team Creation and Team-Level Task Boards",
+          "Activity Feed for shared task changes",
+          "Dashboard with Task Summary Widgets",
+          "Performance Optimization for 1000 concurrent users",
+          "WCAG 2.1 AA Accessibility Compliance",
+          "Integration with SendGrid, AWS S3, and Sentry"
+        ],
+        "out_of_scope": [
+          "Recurring Tasks (Weekly/Monthly) - FR-013",
+          "Task Completion Reports - FR-020",
+          "Push Notifications (Mobile) or SMS",
+          "Advanced Team Hierarchy (Sub-teams)",
+          "Creation of new user accounts via email invite (Assumption: invites only for existing users)"
+        ],
+        "assumptions": [
+          "Email invites (FR-014) will only be sent to users who already have an account in the system.",
+          "PostgreSQL full-text search is sufficient to meet NFR-002 (200ms response) for the expected data volume.",
+          "The 'Admin' role (FR-005) will have a fixed set of permissions defined before Phase 1 development concludes.",
+          "AWS credits will cover the infrastructure costs for the 12-week development and testing period."
+        ]
+      },
+      "deliverables": [
+        {
+          "id": "D-001",
+          "deliverable": "User Authentication and Profile Management Module",
+          "description": "Implementation of secure registration, login, password reset, and profile management including avatar upload and admin user controls.",
+          "acceptance_criteria": "Users can register/login/reset password; profiles support avatars in S3; Admin interface allows user management; passwords hashed with bcrypt; sessions managed via JWT.",
+          "phase": 1
+        },
+        {
+          "id": "D-002",
+          "deliverable": "Core Task Management Engine",
+          "description": "Full CRUD functionality for tasks including subtasks, filtering, and full-text search with soft delete capabilities.",
+          "acceptance_criteria": "Users can create/edit/delete/complete tasks; filtering and search return results under 200ms; soft delete implemented; subtasks track completion status.",
+          "phase": 2
+        },
+        {
+          "id": "D-003",
+          "deliverable": "Collaboration and Notification System",
+          "description": "Task sharing via email, threaded comments, real-time notifications, team boards, and activity feeds.",
+          "acceptance_criteria": "Tasks shared via email invite to existing users; threaded comments function in real-time; in-app notifications trigger instantly; team boards created and accessible.",
+          "phase": 3
+        },
+        {
+          "id": "D-004",
+          "deliverable": "Dashboard, Reporting, and Accessibility Compliance",
+          "description": "Dashboard widgets for task summaries and full UI compliance with WCAG 2.1 AA standards across supported browsers.",
+          "acceptance_criteria": "Dashboard widgets display accurate data; UI passes WCAG 2.1 AA audit; application functional on Firefox, Chrome, Safari, and Edge.",
+          "phase": 4
+        },
+        {
+          "id": "D-005",
+          "deliverable": "Performance Optimization and Launch Readiness",
+          "description": "Load testing, error monitoring integration, and final deployment preparation.",
+          "acceptance_criteria": "Load test confirms 1000 concurrent users with <1% error rate; Sentry integrated; 99.9% uptime achieved during stress testing.",
+          "phase": 5
+        }
+      ],
+      "milestones": [
+        {
+          "id": "M-001",
+          "milestone": "User Management & Security Complete",
+          "deliverables": [
+            "D-001"
+          ],
+          "due_date": "Week 2",
+          "payment_percent": 20,
+          "acceptance_criteria": "All user auth flows tested; security audit passed; Admin interface functional."
+        },
+        {
+          "id": "M-002",
+          "milestone": "Core Task Engine Live",
+          "deliverables": [
+            "D-002"
+          ],
+          "due_date": "Week 4",
+          "payment_percent": 20,
+          "acceptance_criteria": "Task CRUD operations verified; search performance <200ms; subtask logic validated."
+        },
+        {
+          "id": "M-003",
+          "milestone": "Collaboration Features Active",
+          "deliverables": [
+            "D-003"
+          ],
+          "due_date": "Week 6",
+          "acceptance_criteria": "Task sharing and comments functional; real-time notifications working; team boards accessible."
+        },
+        {
+          "id": "M-004",
+          "milestone": "Dashboard & Accessibility Sign-off",
+          "deliverables": [
+            "D-004"
+          ],
+          "due_date": "Week 8",
+          "payment_percent": 20,
+          "acceptance_criteria": "Dashboard widgets rendering; WCAG 2.1 AA audit passed; cross-browser compatibility verified."
+        },
+        {
+          "id": "M-005",
+          "milestone": "Performance Validation & Launch",
+          "deliverables": [
+            "D-005"
+          ],
+          "due_date": "Week 12",
+          "payment_percent": 40,
+          "acceptance_criteria": "1000 concurrent user load test passed; Sentry monitoring active; production deployment completed."
+        }
+      ],
+      "timeline": {
+        "start_date": "TBD after sign-off",
+        "end_date": "TBD + 12 weeks",
+        "total_weeks": 12,
+        "phases": [
+          {
+            "phase": 1,
+            "name": "Setup & User Management",
+            "start_week": 1,
+            "end_week": 2,
+            "milestones": [
+              "M-001"
+            ]
+          },
+          {
+            "phase": 2,
+            "name": "Core Task CRUD",
+            "start_week": 3,
+            "end_week": 4,
+            "milestones": [
+              "M-002"
+            ]
+          },
+          {
+            "phase": 3,
+            "name": "Collaboration Features",
+            "start_week": 5,
+            "end_week": 6,
+            "milestones": [
+              "M-003"
+            ]
+          },
+          {
+            "phase": 4,
+            "name": "Dashboard & Accessibility",
+            "start_week": 7,
+            "end_week": 8,
+            "milestones": [
+              "M-004"
+            ]
+          },
+          {
+            "phase": 5,
+            "name": "Testing, Optimization & Launch",
+            "start_week": 9,
+            "end_week": 12,
+            "milestones": [
+              "M-005"
+            ]
+          }
+        ]
+      },
+      "team_and_resources": [
+        {
+          "role": "Backend Developer",
+          "responsibilities": [
+            "Develop Node.js/Express APIs",
+            "Implement PostgreSQL database schema",
+            "Integrate SendGrid and AWS S3",
+            "Ensure security and performance optimization"
+          ],
+          "hours_per_week": 40
+        },
+        {
+          "role": "Backend Developer",
+          "responsibilities": [
+            "Develop real-time notification logic",
+            "Support database optimization for search",
+            "Assist with CI/CD pipeline configuration"
+          ],
+          "hours_per_week": 40
+        },
+        {
+          "role": "Frontend Developer",
+          "responsibilities": [
+            "Build React/TypeScript user interfaces",
+            "Implement responsive design and accessibility",
+            "Integrate real-time WebSocket connections"
+          ],
+          "hours_per_week": 40
+        },
+        {
+          "role": "Frontend Developer",
+          "responsibilities": [
+            "Build task management forms and filtering logic",
+            "Ensure cross-browser compatibility",
+            "Collaborate on UI/UX refinement"
+          ],
+          "hours_per_week": 40
+        },
+        {
+          "role": "QA Engineer",
+          "responsibilities": [
+            "Execute functional and regression testing",
+            "Perform load testing for 1000 concurrent users",
+            "Validate accessibility compliance"
+          ],
+          "hours_per_week": 40
+        }
+      ],
+      "communication": {
+        "status_reports": "Weekly written status report every Friday",
+        "meetings": "Bi-weekly sprint review and planning meetings",
+        "escalation_path": [
+          "Project Manager",
+          "Vendor Director"
+        ]
+      },
+      "risks_and_mitigations": [
+        {
+          "risk": "Ambiguity in Task Sharing logic regarding account creation for invitees.",
+          "mitigation": "Immediate clarification required from Product Owner; scope assumes invites for existing users only.",
+          "owner": "Product Owner"
+        },
+        {
+          "risk": "Undefined User Roles and Permissions may delay Admin feature implementation.",
+          "mitigation": "Define specific roles and permissions in the first week.",
+          "owner": "Product Owner"
+        },
+        {
+          "risk": "PostgreSQL full-text search performance may not meet 200ms requirement under high load.",
+          "mitigation": "Conduct early performance prototyping; optimize queries or indexing immediately if benchmarks missed.",
+          "owner": "Lead Backend Developer"
+        },
+        {
+          "risk": "Scope creep due to undefined team hierarchy limits.",
+          "mitigation": "Strictly limit initial implementation to flat team creation; defer hierarchy features to Phase 2.",
+          "owner": "Project Manager"
+        }
+      ],
+      "change_management": "Any changes to the approved scope matrix, timeline, or budget must be submitted in writing via a Change Request Form. The Vendor will assess the impact on cost and schedule and provide a formal Change Order for Client approval before work commences. Unapproved changes will not be included in the deliverables.",
+      "acceptance_process": "Upon completion of each milestone, the Vendor will submit the deliverables for review. The Client has five (5) business days to test and provide written acceptance or a detailed list of defects. If no written feedback is received within this period, the deliverable is deemed accepted. Defects must be resolved by the Vendor at no additional cost before the next milestone payment is released.",
+      "terms_and_conditions": {
+        "intellectual_property": "Upon full payment of all fees, the Client shall own all rights, title, and interest in the custom deliverables created specifically for this project. The Vendor retains ownership of pre-existing code libraries, frameworks, and tools used in the development.",
+        "confidentiality": "Both parties agree to keep all proprietary information, including business requirements, technical designs, and user data, strictly confidential. This obligation survives the termination of this agreement for a period of three (3) years.",
+        "warranty": "The Vendor warrants that the deliverables will perform substantially in accordance with the specifications for a period of ninety (90) days following the Acceptance Date. The Vendor will repair or replace any non-conforming deliverables at no additional cost during this period.",
+        "dispute_resolution": "In the event of a dispute, the parties agree to first attempt to resolve the issue through good-faith negotiation. If unresolved, the dispute shall be settled by binding arbitration in accordance with the rules of the American Arbitration Association, located in the jurisdiction of the Vendor's principal place of business."
+      }
+    },
+    "analysis": {
+      "overall_totals": {
+        "total_tasks": 44,
+        "total_story_points": 173,
+        "total_effort_days": 125
+      },
+      "agent_distribution": {
+        "frontend": {
+          "task_count": 17
+        },
+        "database": {
+          "task_count": 3
+        },
+        "backend": {
+          "task_count": 18
+        },
+        "qa": {
+          "task_count": 6
+        }
+      }
+    },
+    "test_cases": {
+      "database": {
+        "agent": "Database Agent",
+        "test_cases": [
+          {
+            "test_id": "TC-DA-001",
+            "task_id": "WBS-USER-002",
+            "test_name": "Happy path: User schema migration runs successfully and creates expected tables with unique email constraint",
+            "type": "Integration",
+            "preconditions": [
+              "PostgreSQL instance is running and accessible",
+              "Migration script for users is present at ./migrations/001_users.sql"
+            ],
+            "steps": [
+              "Run migration script: psql -h localhost -U testuser -d testdb -f ./migrations/001_users.sql",
+              "Connect to database and describe users table: \\d users",
+              "Check for unique constraint on email column: SELECT conname FROM pg_constraint WHERE conrelid = 'users'::regclass AND contype = 'u';"
+            ],
+            "expected_result": "Migration completes with exit code 0; users table includes columns id (serial PK), email (varchar), password_hash (varchar), created_at timestamp, updated_at timestamp; unique constraint named users_email_key exists on email column",
+            "pass_criteria": "Migration exit code = 0 AND column list matches expected AND constraint name 'users_email_key' present",
+            "priority": "Critical"
+          },
+          {
+            "test_id": "TC-DA-002",
+            "task_id": "WBS-USER-002",
+            "test_name": "Edge case: Re-running migration is idempotent and does not alter schema",
+            "type": "Integration",
+            "preconditions": [
+              "User schema already migrated once (as in TC-DA-001)",
+              "Migration script is idempotent (uses CREATE TABLE IF NOT EXISTS or similar)"
+            ],
+            "steps": [
+              "Run migration script a second time: psql -h localhost -U testuser -d testdb -f ./migrations/001_users.sql",
+              "Capture any error output",
+              "Re-describe users table and verify column definitions unchanged"
+            ],
+            "expected_result": "Second run completes with exit code 0 and no errors; schema remains identical to first run",
+            "pass_criteria": "Migration exit code = 0 AND stderr empty AND \\d users output matches prior run",
+            "priority": "Medium"
+          },
+          {
+            "test_id": "TC-DA-003",
+            "task_id": "WBS-USER-002",
+            "test_name": "Failure scenario: Inserting duplicate email violates unique constraint",
+            "type": "Unit",
+            "preconditions": [
+              "User schema migrated",
+              "A test user with email 'test@example.com' already inserted"
+            ],
+            "steps": [
+              "Attempt to insert another user with same email: INSERT INTO users (email, password_hash) VALUES ('test@example.com', 'hash');",
+              "Capture SQL error code and message"
+            ],
+            "expected_result": "Insert fails with PostgreSQL unique_violation error (code 23505)",
+            "pass_criteria": "SQLSTATE = '23505' AND error message contains 'duplicate key value violates unique constraint'",
+            "priority": "High"
+          },
+          {
+            "test_id": "TC-DA-004",
+            "task_id": "WBS-TASK-002",
+            "test_name": "Happy path: Task schema migration runs successfully and creates tables with correct foreign keys and indexes",
+            "type": "Integration",
+            "preconditions": [
+              "PostgreSQL instance running",
+              "User schema already migrated (users table exists)",
+              "Migration script for tasks at ./migrations/002_tasks.sql"
+            ],
+            "steps": [
+              "Run task migration: psql -h localhost -U testuser -d testdb -f ./migrations/002_tasks.sql",
+              "List tables: \\dt",
+              "Describe tasks table: \\d tasks",
+              "Check indexes: SELECT indexname FROM pg_indexes WHERE tablename = 'tasks';",
+              "Verify foreign keys: SELECT conname, confrelid::regclass FROM pg_constraint WHERE conrelid = 'tasks'::regclass AND contype = 'f';"
+            ],
+            "expected_result": "Migration exit code 0; tasks table includes columns id (serial PK), title, description, owner_id (int), assignee_id (int), status, priority, due_date, created_at, updated_at; foreign keys owner_id -> users(id), assignee_id -> users(id); indexes on owner_id, assignee_id, due_date, and a GIN index on tsvector column for search",
+            "pass_criteria": "Migration exit code = 0 AND table definition matches expected AND foreign keys and indexes present as described",
+            "priority": "Critical"
+          },
+          {
+            "test_id": "TC-DA-005",
+            "task_id": "WBS-TASK-002",
+            "test_name": "Edge case: Foreign key constraint prevents orphaned task creation",
+            "type": "Unit",
+            "preconditions": [
+              "Task schema migrated",
+              "No user with id 9999 exists in users table"
+            ],
+            "steps": [
+              "Attempt to insert a task with owner_id = 9999: INSERT INTO tasks (title, owner_id) VALUES ('Orphan task', 9999);",
+              "Capture error"
+            ],
+            "expected_result": "Insert fails with foreign key violation error (code 23503)",
+            "pass_criteria": "SQLSTATE = '23503' AND error message mentions 'foreign key constraint'",
+            "priority": "High"
+          },
+          {
+            "test_id": "TC-DA-006",
+            "task_id": "WBS-TASK-002",
+            "test_name": "Failure scenario: Deleting a user that has associated tasks is restricted",
+            "type": "Unit",
+            "preconditions": [
+              "Task schema migrated",
+              "A user with id 100 exists",
+              "A task owned by user 100 exists"
+            ],
+            "steps": [
+              "Attempt to delete the user: DELETE FROM users WHERE id = 100;",
+              "Capture error"
+            ],
+            "expected_result": "Delete fails with foreign key violation (code 23503) referencing tasks table",
+            "pass_criteria": "SQLSTATE = '23503' AND error message references 'tasks' table",
+            "priority": "Medium"
+          },
+          {
+            "test_id": "TC-DA-007",
+            "task_id": "WBS-DASH-005",
+            "test_name": "Happy path: Dashboard query executes under 200ms with realistic data volume",
+            "type": "Performance",
+            "preconditions": [
+              "PostgreSQL instance with pgbench or similar loaded with 10,000 tasks, 1,000 users, appropriate indexes per task schema",
+              "Dashboard query defined (e.g., SELECT t.id, t.title, u.email FROM tasks t JOIN users u ON t.owner_id = u.id WHERE t.due_date >= NOW() ORDER BY t.due_date LIMIT 20);"
+            ],
+            "steps": [
+              "Run query with EXPLAIN ANALYZE and capture execution time: EXPLAIN ANALYZE <query>;",
+              "Repeat 10 times to get average",
+              "Ensure no external load"
+            ],
+            "expected_result": "Average execution time across runs is less than 200 ms",
+            "pass_criteria": "AVG(execution_time) < 200 ms",
+            "priority": "Critical"
+          },
+          {
+            "test_id": "TC-DA-008",
+            "task_id": "WBS-DASH-005",
+            "test_name": "Edge case: Dashboard query remains under 200ms with empty tables",
+            "type": "Performance",
+            "preconditions": [
+              "PostgreSQL instance with schema migrated but no data in tasks/users tables"
+            ],
+            "steps": [
+              "Run same dashboard query with EXPLAIN ANALYZE",
+              "Capture execution time"
+            ],
+            "expected_result": "Query executes quickly (typically < 5 ms) well under 200 ms",
+            "pass_criteria": "execution_time < 200 ms",
+            "priority": "Medium"
+          },
+          {
+            "test_id": "TC-DA-009",
+            "task_id": "WBS-DASH-005",
+            "test_name": "Failure scenario: Query exceeds 200ms without performance indexes; adding indexes brings it under limit",
+            "type": "Performance",
+            "preconditions": [
+              "PostgreSQL instance with 100,000 tasks and 10,000 users",
+              "Dashboard query as defined, but indexes on owner_id, due_date, and join columns are missing"
+            ],
+            "steps": [
+              "Run query with EXPLAIN ANALYZE and record time (should be >200ms)",
+              "Create missing indexes: CREATE INDEX idx_tasks_owner_id ON tasks(owner_id); CREATE INDEX idx_tasks_due_date ON tasks(due_date);",
+              "Run query again with EXPLAIN ANALYZE and record time"
+            ],
+            "expected_result": "First run exceeds 200 ms; second run after indexes is under 200 ms",
+            "pass_criteria": "First execution_time > 200 ms AND second execution_time < 200 ms",
+            "priority": "High"
+          }
+        ],
+        "coverage_summary": {
+          "total_tests": 9,
+          "by_type": {
+            "Unit": 3,
+            "Integration": 3,
+            "Performance": 3
+          },
+          "tasks_covered": [
+            "WBS-USER-002",
+            "WBS-TASK-002",
+            "WBS-DASH-005"
+          ]
+        }
+      }
+    }
+  }
+}

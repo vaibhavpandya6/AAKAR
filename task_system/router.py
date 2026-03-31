@@ -15,6 +15,38 @@ logger = structlog.get_logger()
 # ---------------------------------------------------------------------------
 
 SKILL_REGISTRY: dict[str, list[str]] = {
+    "bootstrap": [
+        "setup",
+        "configuration",
+        "config",
+        "requirements.txt",
+        "package.json",
+        "dockerfile",
+        "docker-compose",
+        "environment",
+        "env",
+        ".env",
+        "initialize",
+        "scaffold",
+        "boilerplate",
+        "project setup",
+        "dependencies",
+        "devcontainer",
+        "makefile",
+        "gitignore",
+        "tsconfig",
+        "pyproject",
+        "poetry",
+        "pipfile",
+        "yarn",
+        "npm init",
+        "vite",
+        "webpack",
+        "eslint",
+        "prettier",
+        "linter",
+        "formatter",
+    ],
     "backend": [
         "api",
         "endpoint",
@@ -202,7 +234,7 @@ class AgentRouter:
                   skill_required (optional).
 
         Returns:
-            Canonical skill name: one of backend | frontend | database | qa.
+            Canonical skill name: one of bootstrap | backend | frontend | database | qa.
         """
         task_id = task.get("id", "unknown")
 

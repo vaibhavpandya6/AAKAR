@@ -44,7 +44,7 @@ class Settings(BaseSettings):
 
     # Sandbox Configuration
     sandbox_image: str = Field(default="node:18-alpine", alias="SANDBOX_IMAGE")
-    sandbox_cpu_limit: str = Field(default="1000", alias="SANDBOX_CPU_LIMIT")
+    sandbox_cpu_limit: str = Field(default="1.0", alias="SANDBOX_CPU_LIMIT")
     sandbox_memory_limit: str = Field(default="512MB", alias="SANDBOX_MEMORY_LIMIT")
     sandbox_timeout_seconds: int = Field(default=30, alias="SANDBOX_TIMEOUT_SECONDS")
 

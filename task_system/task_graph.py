@@ -269,3 +269,55 @@ class TaskGraph:
             wave_sizes=[len(b) for b in batches],
         )
         return batches
+
+    # ──────────────────────────────────────────────────────────────────────
+    # Blocked task detection
+    # ──────────────────────────────────────────────────────────────────────
+
+    def get_blocked_tasks(
+        self,
+        tasks: List[Dict[str, Any]],
+        completed_ids: List[str],
+        failed_ids: List[str],
+    ) -> List[Dict[str, Any]]:
+        """Return tasks that are permanently blocked due to failed dependencies.
+
+        A task is blocked when:
+        - It has at least one dependency that is in ``failed_ids``.
+        - It is not already in ``completed_ids`` or ``failed_ids``.
+
+        These tasks can never be executed because their dependencies failed,
+        so they should be marked as failed to unblock the DAG execution.
+
+        Args:
+            tasks: Full task list.
+            completed_ids: IDs of tasks that have finished successfully.
+            failed_ids: IDs of tasks that have failed.
+
+        Returns:
+            List of task dicts that are blocked and should be marked as failed.
+        """
+        completed_set = set(str(cid) for cid in completed_ids)
+        failed_set = set(str(fid) for fid in failed_ids)
+        blocked: List[Dict[str, Any]] = []
+
+        for task in tasks:
+            tid = str(task.get("id", ""))
+
+            # Skip already completed or failed
+            if tid in completed_set or tid in failed_set:
+                continue
+
+            deps = [str(d) for d in (task.get("depends_on") or [])]
+
+            # Check if any dependency has failed
+            if any(dep in failed_set for dep in deps):
+                blocked.append(task)
+
+        if blocked:
+            logger.info(
+                "blocked_tasks_detected",
+                blocked_count=len(blocked),
+                blocked_ids=[str(t.get("id")) for t in blocked],
+            )
+        return blocked

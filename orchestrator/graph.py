@@ -17,6 +17,8 @@ Graph topology
       │
     router ────────────────────────────────► [validate DAG, enqueue wave 1]
       │
+    coordinator ───────────────────────────► [cross-agent validation] (NEW)
+      │
     task_monitor ──► (loop) ──────────────► [poll completions, enqueue next waves]
       │
       ├─ more_tasks ──► task_monitor       (tasks still in flight)
@@ -24,10 +26,13 @@ Graph topology
       └─ qa         ──► qa
                           │
                           ├─ fix     ──► fix_retry ──► (back to qa)
-                          ├─ review  ──► reviewer
-                          │                 │
-                          │                 ├─ deliver ──► delivery ──► END
-                          │                 └─ failed  ──► END
+                          ├─ integration ─► integration (NEW)
+                          │                    │
+                          │                    ├─ bugs ──► fix_retry
+                          │                    └─ clean ─► reviewer
+                          │                                  │
+                          │                                  ├─ deliver ──► delivery ──► END
+                          │                                  └─ failed  ──► END
                           └─ max_retries_exceeded ──► END
 """
 
@@ -39,8 +44,10 @@ from langgraph.graph import END, START, StateGraph
 
 from messaging.message_bus import get_message_bus
 from messaging.schemas import MessageType
+from orchestrator.nodes.coordinator_node import coordinator_node
 from orchestrator.nodes.delivery_node import delivery_node
 from orchestrator.nodes.hitl_node import hitl_node
+from orchestrator.nodes.integration_node import integration_node
 from orchestrator.nodes.planner_node import planner_node
 from orchestrator.nodes.qa_node import qa_node
 from orchestrator.nodes.reviewer_node import reviewer_node
@@ -389,6 +396,9 @@ def route_after_tasks(state: PlatformState) -> str:
     Checks whether all tasks in ``task_dag`` are accounted for in either
     ``completed_tasks``, ``failed_tasks``, or ``pending_tasks``.
 
+    Also handles tasks blocked by failed dependencies — these are treated as
+    failed since they can never execute.
+
     Routes:
         ``"more_tasks"`` — tasks are still in flight or not yet dispatched
         ``"qa"``         — all tasks resolved and at least one succeeded
@@ -413,6 +423,44 @@ def route_after_tasks(state: PlatformState) -> str:
 
     # Tasks not yet in any state (waiting for their dependencies to land)
     unaccounted = all_task_ids - resolved_ids - pending_ids
+
+    # Check if unaccounted tasks are blocked by failed dependencies
+    if unaccounted and not pending:
+        task_graph = TaskGraph()
+        blocked = task_graph.get_blocked_tasks(
+            tasks=task_dag,
+            completed_ids=list(completed_ids),
+            failed_ids=list(failed_ids),
+        )
+        blocked_ids = {str(t.get("id")) for t in blocked}
+
+        # If all unaccounted tasks are blocked, treat them as failed
+        if unaccounted <= blocked_ids:
+            logger.warning(
+                "route_after_tasks_blocked_as_failed",
+                project_id=state.get("project_id"),
+                blocked_count=len(blocked_ids),
+                blocked_ids=list(blocked_ids),
+            )
+            # These tasks are blocked, not actually executing
+            # Proceed to next stage (qa or failed)
+            if completed_ids:
+                logger.info(
+                    "route_after_tasks_qa",
+                    project_id=state.get("project_id"),
+                    completed=len(completed_ids),
+                    failed=len(failed_ids),
+                    blocked=len(blocked_ids),
+                )
+                return "qa"
+            else:
+                logger.error(
+                    "route_after_tasks_all_failed",
+                    project_id=state.get("project_id"),
+                    failed_count=len(failed_ids),
+                    blocked_count=len(blocked_ids),
+                )
+                return "failed"
 
     if pending or unaccounted:
         # Keep polling — work is still in flight or about to be enqueued
@@ -441,7 +489,7 @@ def route_after_qa(state: PlatformState) -> str:
     """Route after a QA pass based on bug reports and retry history.
 
     Routes:
-        ``"review"``              — no bugs found; proceed to code review
+        ``"integration"``         — no bugs found; proceed to integration validation
         ``"fix"``                 — bugs exist and retries remain
         ``"max_retries_exceeded"``— bugs remain but a task has hit ``_MAX_TASK_RETRIES``
 
@@ -455,7 +503,7 @@ def route_after_qa(state: PlatformState) -> str:
 
     if not bug_reports:
         logger.info("route_after_qa_clean", project_id=state.get("project_id"))
-        return "review"
+        return "integration"
 
     # If the fix-retry subgraph has flagged any task as exhausted, escalate
     retry_counts: dict[str, int] = state.get("retry_counts") or {}
@@ -474,6 +522,36 @@ def route_after_qa(state: PlatformState) -> str:
         bug_count=len(bug_reports),
     )
     return "fix"
+
+
+def route_after_integration(state: PlatformState) -> str:
+    """Route after integration validation based on results.
+
+    Routes:
+        ``"review"`` — integration passed; proceed to code review
+        ``"fix"``    — integration found issues that need fixing
+
+    Args:
+        state: Current PlatformState after integration_node returned.
+
+    Returns:
+        Edge label string.
+    """
+    bug_reports: list[dict] = state.get("bug_reports") or []
+
+    # Check if there are integration-specific bugs
+    integration_bugs = [b for b in bug_reports if b.get("type") == "integration_failure"]
+
+    if integration_bugs:
+        logger.warning(
+            "route_after_integration_fix",
+            project_id=state.get("project_id"),
+            integration_issues=len(integration_bugs),
+        )
+        return "fix"
+
+    logger.info("route_after_integration_clean", project_id=state.get("project_id"))
+    return "review"
 
 
 def route_after_review(state: PlatformState) -> str:
@@ -647,8 +725,10 @@ def build_graph(checkpointer: Any) -> Any:
     graph.add_node("planner", planner_node)
     graph.add_node("hitl_formatter", hitl_node)
     graph.add_node("router", router_node)
+    graph.add_node("coordinator", coordinator_node)  # NEW: cross-agent validation
     graph.add_node("task_monitor", task_monitor_node)
     graph.add_node("qa", qa_node)
+    graph.add_node("integration", integration_node)  # NEW: integration validation
     graph.add_node("fix_retry", _fix_retry_wrapper)   # translates state for fix_retry_subgraph
     graph.add_node("reviewer", reviewer_node)
     graph.add_node("delivery", delivery_node)
@@ -667,7 +747,9 @@ def build_graph(checkpointer: Any) -> Any:
     # ╚══════════════════════════════════════════════════════════════════════╝
     graph.add_edge("hitl_formatter", "router")
 
-    graph.add_edge("router", "task_monitor")
+    # Router validates DAG, then coordinator validates cross-agent consistency
+    graph.add_edge("router", "coordinator")
+    graph.add_edge("coordinator", "task_monitor")
 
     # ── task_monitor polling loop ─────────────────────────────────────────────
     graph.add_conditional_edges(
@@ -680,19 +762,29 @@ def build_graph(checkpointer: Any) -> Any:
         },
     )
 
-    # ── QA → fix cycle or review ──────────────────────────────────────────────
+    # ── QA → fix cycle or integration ─────────────────────────────────────────
     graph.add_conditional_edges(
         "qa",
         route_after_qa,
         {
             "fix": "fix_retry",             # bugs found, retries available
-            "review": "reviewer",           # clean build → human review
+            "integration": "integration",   # clean build → integration validation
             "max_retries_exceeded": END,    # exhausted retries → escalate via HITL
         },
     )
 
     # After every fix attempt, unconditionally re-run QA to verify resolution
     graph.add_edge("fix_retry", "qa")
+
+    # ── Integration → review or fix ───────────────────────────────────────────
+    graph.add_conditional_edges(
+        "integration",
+        route_after_integration,
+        {
+            "review": "reviewer",           # integration passed → code review
+            "fix": "fix_retry",             # integration issues → fix loop
+        },
+    )
 
     # ── Review decision ───────────────────────────────────────────────────────
     graph.add_conditional_edges(

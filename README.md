@@ -20,11 +20,30 @@ copy .env.example .env
 
 # 4. After "✅ All services started", the API is at http://localhost:8080
 # See "How to use" section below for next steps.
+
+# 5. (Optional) View live logs from all services in your terminal:
+.\view_logs.ps1
 ```
 
 For **detailed Windows setup**, see the [Windows section](#windows) below.
 
 For **macOS/Linux**, see [Prerequisites](#prerequisites) and [Setup](#setup) sections.
+
+### Viewing Live Logs
+
+To see all service logs in real-time with color-coded labels:
+
+**Windows: For viewing the logs **
+```powershell
+.\view_logs.ps1
+```
+
+**Linux/Mac:**
+```bash
+./view_logs.sh
+```
+
+This will display logs from all services (API, Orchestrator, Bootstrap Agent, Backend Agent, Frontend Agent, Database Agent, QA Agent) in a single terminal window with colored prefixes. Press Ctrl+C to stop.
 
 ## Architecture Overview
 
@@ -178,7 +197,32 @@ sudo usermod -aG docker $USER   # Add your user to docker group (requires logout
    ```powershell
    .\start.ps1 -SkipInfra
    ```
+   **for logs**
+   ``` 
+   Get-Content logs\backend_agent.log -Tail 30 -Wait
+   ```
+    **To Prevent This in the Future. If the system crashes or you interrupt it, run the cleanup script before restarting:**
 
+    ``` 
+    python scripts/clear_redis_pending.py 
+
+    ```
+
+
+    **FULL SYSTEM RESET**
+    # 1. Stop all services
+    .\stop.ps1
+
+    # 2. Clear Redis completely (this will reset orchestrator state)
+    python -c "import redis; r = redis.Redis(); r.flushall(); print('Redis cleared')"
+
+    # 3. Optional: Clean up old checkpoints
+    Remove-Item -Recurse -Force .langgraph_checkpoints -ErrorAction SilentlyContinue
+
+    # 4. Start fresh
+    .\start.ps1
+
+    
 4. **Wait for startup**
    - The script will:
      - Start Redis + PostgreSQL in Docker
@@ -217,6 +261,7 @@ If you prefer Linux inside Windows, use **Windows Subsystem for Linux 2**:
 # Inside WSL2 Ubuntu terminal, follow the Ubuntu instructions above
 ./start.sh
 ```
+
 
 ## Setup
 

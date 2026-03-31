@@ -10,6 +10,8 @@ import redis.asyncio as aioredis
 import structlog
 
 from config import settings
+from messaging.message_bus import get_message_bus
+from messaging.schemas import Message, MessageType
 from task_system.router import AgentRouter
 from workspace_manager.git_manager import GitManager, GitError, MergeConflictError
 
@@ -475,6 +477,33 @@ class TaskQueue:
                 agent=agent_name,
                 error=str(exc)[:200],
             )
+            # Publish MERGE_CONFLICT message to orchestrator stream
+            try:
+                message_bus = await get_message_bus()
+                conflict_msg = Message(
+                    message_type=MessageType.MERGE_CONFLICT,
+                    correlation_id=f"{project_id}:{task_id}",
+                    sender=agent_name,
+                    payload={
+                        "task_id": task_id,
+                        "branch": branch_name,
+                        "error": str(exc)[:500],
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    },
+                )
+                await message_bus.publish("stream:orchestrator", conflict_msg)
+                await logger.ainfo(
+                    "merge_conflict_message_published",
+                    project_id=project_id,
+                    task_id=task_id,
+                )
+            except Exception as msg_err:
+                await logger.aerror(
+                    "merge_conflict_message_publish_failed",
+                    project_id=project_id,
+                    task_id=task_id,
+                    error=str(msg_err),
+                )
             return False
 
         except GitError as exc:

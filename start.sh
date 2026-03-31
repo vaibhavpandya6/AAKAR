@@ -177,6 +177,10 @@ start_services() {
     PIDS+=($!)
 
     # Agent workers
+    log_info "  → Starting bootstrap_agent worker..."
+    python -m agents.bootstrap_agent.worker > /tmp/bootstrap_agent.log 2>&1 &
+    PIDS+=($!)
+
     log_info "  → Starting backend_agent worker..."
     python -m agents.backend_agent.worker > /tmp/backend_agent.log 2>&1 &
     PIDS+=($!)
@@ -229,6 +233,7 @@ main() {
     log_info "Service logs available at:"
     log_info "  - API:                /tmp/api.log"
     log_info "  - Orchestrator:       /tmp/orchestrator.log"
+    log_info "  - BootstrapAgent:     /tmp/bootstrap_agent.log"
     log_info "  - BackendAgent:       /tmp/backend_agent.log"
     log_info "  - FrontendAgent:      /tmp/frontend_agent.log"
     log_info "  - DatabaseAgent:      /tmp/database_agent.log"

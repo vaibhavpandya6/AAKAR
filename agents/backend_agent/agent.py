@@ -1,7 +1,12 @@
 """Backend agent — implements FastAPI endpoints and Python services."""
 
+import ast
+import importlib.util
 import json
-from typing import Any, Dict, List
+import os
+import sys
+from pathlib import Path
+from typing import Any, Dict, List, Tuple
 
 import structlog
 
@@ -10,6 +15,21 @@ from agents.backend_agent.prompts import SYSTEM_PROMPT, format_backend_task_prom
 from workspace_manager.git_manager import GitManager
 
 logger = structlog.get_logger()
+
+# Standard library modules that are always available
+_STDLIB_MODULES = frozenset(sys.stdlib_module_names) if hasattr(sys, 'stdlib_module_names') else frozenset({
+    'abc', 'asyncio', 'collections', 'contextlib', 'copy', 'datetime', 'enum',
+    'functools', 'hashlib', 'io', 'itertools', 'json', 'logging', 'math', 'os',
+    'pathlib', 'pickle', 're', 'secrets', 'shutil', 'subprocess', 'sys', 'tempfile',
+    'threading', 'time', 'typing', 'unittest', 'uuid', 'warnings', 'weakref',
+})
+
+# Common third-party packages that are expected to be installed
+_COMMON_PACKAGES = frozenset({
+    'fastapi', 'pydantic', 'sqlalchemy', 'uvicorn', 'starlette', 'httpx',
+    'aiohttp', 'requests', 'pytest', 'structlog', 'alembic', 'asyncpg',
+    'redis', 'celery', 'langchain', 'openai', 'chromadb', 'numpy', 'pandas',
+})
 
 
 class BackendAgent(BaseAgent):
@@ -154,12 +174,34 @@ class BackendAgent(BaseAgent):
                     task_id=task_id,
                     errors=syntax_errors,
                 )
-                # Log warning but continue (let QA agent catch it)
+                # Critical syntax errors should fail the task immediately
+                # These include: await in non-async function, invalid Python syntax
+                critical_errors = [
+                    e for e in syntax_errors
+                    if "await" in e.get("error", "").lower()
+                    or "syntax" in e.get("error", "").lower()
+                ]
+                if critical_errors:
+                    error_msg = f"Critical syntax errors in generated code: {critical_errors[:3]}"
+                    await self.report_failure(task_id, project_id, error_msg)
+                    return
+
+            # ── 6.6. Validate imports ─────────────────────────────────────────
+            import_errors = await self._validate_imports(
+                project_id=project_id,
+                files=files_written,
+            )
+
+            if import_errors:
                 await self.log.awarning(
-                    "continuing_despite_syntax_errors",
+                    "import_validation_issues",
                     task_id=task_id,
-                    error_count=len(syntax_errors),
+                    error_count=len(import_errors),
+                    errors=import_errors[:5],  # Log first 5
                 )
+                # Store import errors for QA to review
+                # NOTE: We continue despite import errors as they might be
+                # resolved by other tasks generating the missing modules
 
             # ── 7. Commit ─────────────────────────────────────────────────
             self.git.commit(
@@ -277,3 +319,224 @@ class BackendAgent(BaseAgent):
                 )
 
         return syntax_errors
+
+    async def _validate_imports(
+        self, project_id: str, files: List[str]
+    ) -> List[Dict[str, Any]]:
+        """Validate that all imports in generated files can be resolved.
+
+        Checks:
+        1. Standard library imports
+        2. Third-party packages (common ones expected in requirements.txt)
+        3. Local project imports (relative/absolute within workspace)
+
+        Args:
+            project_id: Project identifier
+            files: List of file paths to validate
+
+        Returns:
+            List of import errors (empty if all valid)
+        """
+        import_errors = []
+        workspace_path = self.workspace_manager._get_workspace_path(project_id)
+
+        # Build a set of local module paths in the workspace
+        local_modules = await self._discover_local_modules(project_id)
+
+        for file_path in files:
+            if not file_path.endswith('.py'):
+                continue
+
+            try:
+                content = await self.workspace_manager.read_file(project_id, file_path)
+                tree = ast.parse(content)
+                file_dir = os.path.dirname(file_path)
+
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.Import):
+                        for alias in node.names:
+                            error = self._check_import(
+                                alias.name, file_path, file_dir,
+                                local_modules, workspace_path
+                            )
+                            if error:
+                                import_errors.append(error)
+
+                    elif isinstance(node, ast.ImportFrom):
+                        module = node.module or ""
+                        # Handle relative imports
+                        if node.level > 0:
+                            error = self._check_relative_import(
+                                module, node.level, file_path, file_dir,
+                                local_modules
+                            )
+                        else:
+                            error = self._check_import(
+                                module, file_path, file_dir,
+                                local_modules, workspace_path
+                            )
+                        if error:
+                            import_errors.append(error)
+
+            except SyntaxError:
+                pass  # Already caught by syntax validation
+            except Exception as e:
+                await self.log.awarning(
+                    "import_validation_failed",
+                    file_path=file_path,
+                    error=str(e),
+                )
+
+        return import_errors
+
+    async def _discover_local_modules(self, project_id: str) -> set:
+        """Discover all Python modules available in the workspace.
+
+        Returns:
+            Set of module paths (e.g., {'backend', 'backend.routers', 'models'})
+        """
+        local_modules = set()
+        try:
+            all_files = await self.workspace_manager.list_files(project_id)
+            for f in all_files:
+                if f.endswith('.py'):
+                    # Convert path to module notation
+                    # backend/routers/notes.py -> backend.routers.notes
+                    module_path = f[:-3].replace('/', '.').replace('\\', '.')
+
+                    # Add the module and all parent packages
+                    parts = module_path.split('.')
+                    for i in range(len(parts)):
+                        local_modules.add('.'.join(parts[:i+1]))
+
+                    # Handle __init__.py specially - the directory itself is a module
+                    if f.endswith('__init__.py'):
+                        parent = module_path.rsplit('.', 1)[0] if '.' in module_path else ''
+                        if parent:
+                            local_modules.add(parent)
+        except Exception:
+            pass
+
+        return local_modules
+
+    def _check_import(
+        self,
+        module_name: str,
+        file_path: str,
+        file_dir: str,
+        local_modules: set,
+        workspace_path: str,
+    ) -> Dict[str, Any] | None:
+        """Check if an import can be resolved.
+
+        Returns:
+            Error dict if import cannot be resolved, None otherwise
+        """
+        if not module_name:
+            return None
+
+        # Get the top-level package name
+        top_level = module_name.split('.')[0]
+
+        # 1. Check stdlib
+        if top_level in _STDLIB_MODULES:
+            return None
+
+        # 2. Check common third-party packages
+        if top_level in _COMMON_PACKAGES:
+            return None
+
+        # 3. Check local modules
+        if module_name in local_modules or top_level in local_modules:
+            return None
+
+        # 4. Check if it's a relative import from current directory context
+        if file_dir:
+            potential_local = f"{file_dir.replace('/', '.').replace(os.sep, '.')}.{module_name}"
+            if potential_local in local_modules:
+                return None
+
+        # 5. Try to find it in the Python path (for installed packages)
+        try:
+            spec = importlib.util.find_spec(top_level)
+            if spec is not None:
+                return None
+        except (ModuleNotFoundError, ValueError, ImportError):
+            pass
+
+        return {
+            'file': file_path,
+            'import': module_name,
+            'error': f"Cannot resolve import '{module_name}' - not found in stdlib, "
+                     f"common packages, or project modules",
+            'suggestion': self._suggest_import_fix(module_name, local_modules),
+        }
+
+    def _check_relative_import(
+        self,
+        module: str,
+        level: int,
+        file_path: str,
+        file_dir: str,
+        local_modules: set,
+    ) -> Dict[str, Any] | None:
+        """Check if a relative import can be resolved.
+
+        Args:
+            module: The module being imported (may be empty for 'from . import x')
+            level: Number of dots (1 = ., 2 = .., etc.)
+            file_path: Path of the importing file
+            file_dir: Directory of the importing file
+            local_modules: Set of known local modules
+
+        Returns:
+            Error dict if import cannot be resolved, None otherwise
+        """
+        if not file_dir:
+            return {
+                'file': file_path,
+                'import': f"{'.' * level}{module}",
+                'error': "Relative import in file without parent package",
+                'suggestion': "Use absolute imports or organize code into packages",
+            }
+
+        # Navigate up directories based on level
+        parts = file_dir.replace('\\', '/').split('/')
+        if level > len(parts):
+            return {
+                'file': file_path,
+                'import': f"{'.' * level}{module}",
+                'error': f"Relative import level ({level}) exceeds package depth ({len(parts)})",
+                'suggestion': "Reduce relative import level or restructure package hierarchy",
+            }
+
+        # Build the resolved module path
+        base_parts = parts[:len(parts) - level + 1]
+        resolved = '.'.join(base_parts)
+        if module:
+            resolved = f"{resolved}.{module}"
+
+        if resolved in local_modules or resolved.split('.')[0] in local_modules:
+            return None
+
+        return {
+            'file': file_path,
+            'import': f"{'.' * level}{module}",
+            'error': f"Cannot resolve relative import - resolved to '{resolved}' which doesn't exist",
+            'suggestion': f"Create {resolved.replace('.', '/')}.py or {resolved.replace('.', '/')}/__init__.py",
+        }
+
+    def _suggest_import_fix(self, module_name: str, local_modules: set) -> str:
+        """Suggest a fix for an unresolved import."""
+        top_level = module_name.split('.')[0]
+
+        # Check for similar module names (typo detection)
+        from difflib import get_close_matches
+        all_known = list(_STDLIB_MODULES) + list(_COMMON_PACKAGES) + list(local_modules)
+        matches = get_close_matches(top_level, all_known, n=3, cutoff=0.6)
+
+        if matches:
+            return f"Did you mean: {', '.join(matches)}?"
+
+        # Suggest adding to requirements.txt
+        return f"Add '{top_level}' to requirements.txt or create the module locally"

@@ -44,21 +44,44 @@ RESPONSE FORMAT — JSON only:
       "id": "<unique snake_case identifier, e.g. task_001>",
       "title": "<short imperative title>",
       "description": "<detailed description of what must be implemented>",
-      "skill_required": "<backend | frontend | database | qa>",
+      "skill_required": "<bootstrap | backend | frontend | database | qa>",
       "acceptance_criteria": ["<criterion 1>", "<criterion 2>"],
       "depends_on": ["<task_id>"]
     }
   ]
 }
 
-Rules:
-- All task IDs must be unique strings (no duplicates).
-- depends_on must reference only IDs defined in the same response.
-- No circular dependencies of any kind.
-- Include at least one backend task and one qa task.
-- Maximum 20 tasks total.
-- acceptance_criteria must be a non-empty list of strings.
-- depends_on must be an array (use [] if no dependencies).
+Available skills:
+- bootstrap: Project configuration files ONLY (requirements.txt, package.json, Dockerfile, .env.example, docker-compose.yml, tsconfig.json)
+- backend: API endpoints, services, authentication, business logic (FastAPI routes, SQLAlchemy models, Pydantic schemas)
+- frontend: UI components, pages, forms, styling (React components, TypeScript)
+- database: Schema migrations, models, database setup (Alembic migrations, SQLAlchemy Base)
+- qa: Tests, validation, security checks
+
+CRITICAL RULES:
+1. START with a bootstrap task (id: task_001) that creates:
+   - requirements.txt with ALL Python dependencies (fastapi, uvicorn, sqlalchemy, asyncpg, pydantic, etc.)
+   - package.json with ALL Node dependencies (react, react-dom, typescript, vite, axios, etc.)
+   - .env.example with DATABASE_URL, API keys, etc.
+   - Dockerfile with correct CMD pointing to actual entry file
+
+2. INCLUDE database task BEFORE backend task:
+   - Database models must exist before API uses them
+   - task_002: database - Create SQLAlchemy models and Alembic migrations
+   - task_003: backend - Create FastAPI routes (depends_on: ["task_002"])
+
+3. Backend tasks MUST specify:
+   - Which models to create (User, Note, etc.)
+   - Which endpoints (GET /notes, POST /notes, etc.)
+   - Which imports are needed (from backend.database import get_db)
+
+4. All task IDs must be unique strings (no duplicates).
+5. depends_on must reference only IDs defined in the same response.
+6. No circular dependencies.
+7. Include at least one backend task and one qa task.
+8. Maximum 20 tasks total.
+9. acceptance_criteria must be a non-empty list of strings.
+10. depends_on must be an array (use [] if no dependencies).
 
 Remember: Output ONLY the JSON object. Nothing else.
 """
