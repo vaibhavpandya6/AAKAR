@@ -58,3 +58,5 @@ chroma_db/
 # Logs
 *.log
 logs/
+
+.pids

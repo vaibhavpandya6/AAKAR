@@ -9,7 +9,7 @@ Graph topology
 
     START
       │
-    planner ──────────────────────────────► [LLM → task DAG]
+    brd_to_wbs ───────────────────────────► [BRD → WBS task DAG]
       │
     hitl_formatter ───────────────────────► [format plan, DB → AWAITING_APPROVAL]
       │
@@ -41,7 +41,7 @@ from messaging.message_bus import get_message_bus
 from messaging.schemas import MessageType
 from orchestrator.nodes.delivery_node import delivery_node
 from orchestrator.nodes.hitl_node import hitl_node
-from orchestrator.nodes.planner_node import planner_node
+from orchestrator.nodes.brd_to_wbs_node import brd_to_wbs_node
 from orchestrator.nodes.qa_node import qa_node
 from orchestrator.nodes.reviewer_node import reviewer_node
 from orchestrator.nodes.router_node import router_node
@@ -644,7 +644,7 @@ def build_graph(checkpointer: Any) -> Any:
     graph = StateGraph(PlatformState)
 
     # ── Node registration ─────────────────────────────────────────────────────
-    graph.add_node("planner", planner_node)
+    graph.add_node("brd_to_wbs", brd_to_wbs_node)
     graph.add_node("hitl_formatter", hitl_node)
     graph.add_node("router", router_node)
     graph.add_node("task_monitor", task_monitor_node)
@@ -654,8 +654,8 @@ def build_graph(checkpointer: Any) -> Any:
     graph.add_node("delivery", delivery_node)
 
     # ── Linear spine ──────────────────────────────────────────────────────────
-    graph.add_edge(START, "planner")
-    graph.add_edge("planner", "hitl_formatter")
+    graph.add_edge(START, "brd_to_wbs")
+    graph.add_edge("brd_to_wbs", "hitl_formatter")
 
     # ╔══════════════════════════════════════════════════════════════════════╗
     # ║  HITL PAUSE POINT                                                    ║

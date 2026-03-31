@@ -54,8 +54,8 @@ For **macOS/Linux**, see [Prerequisites](#prerequisites) and [Setup](#setup) sec
     └────────────┘            └─────────────┘       └──────────────┘
          │
     ┌────┴────────────────────────────────────────────────────┐
-    │                    Agent Workers                         │
-    │                                                           │
+    │                    Agent Workers                        │
+    │                                                         │
     ├─────────────────┬──────────────────┬────────────────────┤
     │   BackendAgent  │  FrontendAgent   │  DatabaseAgent     │
     │  (Python/Node)  │   (React/Vue)    │  (Migrations)      │

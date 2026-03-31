@@ -1,9 +1,9 @@
-"""HITL plan endpoints — review and approve or reject the planner's task DAG.
+"""HITL plan endpoints — review and approve or reject the BRD-to-WBS task DAG.
 
 The orchestration graph pauses *before* the ``router`` node (``interrupt_before``
 is set in :func:`~orchestrator.graph.build_graph`).  These endpoints let an
 operator inspect the plan, then either resume execution or send it back to the
-planner with corrective feedback.
+BRD-to-WBS node with corrective feedback.
 """
 
 from __future__ import annotations
@@ -43,7 +43,7 @@ router = APIRouter(prefix="/projects", tags=["plans"])
 @router.get(
     "/{project_id}/plan",
     response_model=TaskDAGResponse,
-    summary="Return the LLM-generated task plan awaiting human approval",
+    summary="Return the WBS-generated task plan awaiting human approval",
 )
 async def get_plan(
     project_id: str,
@@ -53,7 +53,7 @@ async def get_plan(
 ) -> TaskDAGResponse:
     """Return the current task plan from the LangGraph checkpoint.
 
-    The plan is available after the ``planner_node`` has run and the graph
+    The plan is available after the ``brd_to_wbs_node`` has run and the graph
     has paused at the HITL interrupt point (``project_status = AWAITING_APPROVAL``).
 
     Args:
@@ -155,7 +155,7 @@ async def approve_plan(
     2. Builds a fresh ``PlatformState`` that includes the operator feedback
        in ``plan_feedback``.
     3. Restarts the graph from ``START`` (passing the new state as input)
-       so the planner re-generates the DAG incorporating the feedback.
+       so the BRD-to-WBS node re-generates the DAG incorporating the feedback.
     4. Returns ``{ "status": "replanning" }``.
 
     Both flows run the graph as a fire-and-forget ``asyncio`` background task.

@@ -1,0 +1,348 @@
+{
+  "project_summary": "This WBS outlines the 12-week development plan for the Task Management System, focusing on User Management, Task Management, and Collaboration modules using a Node.js/React/PostgreSQL stack. The plan covers 20 critical tasks distributed across backend, frontend, database, QA, and DevOps agents to meet all functional and non-functional requirements within the 5-person team constraint.",
+  "total_tasks": 20,
+  "skill_breakdown": {
+    "database": 1,
+    "backend": 10,
+    "frontend": 6,
+    "qa": 3
+  },
+  "tasks": [
+    {
+      "id": "wbs_db_001",
+      "title": "Design and create Users, Tasks, Shares, and Comments tables",
+      "description": "Create PostgreSQL schema with proper indexing for users, tasks, task_shares, and comments tables. Implement constraints for foreign keys and unique email addresses.",
+      "skill_required": "database",
+      "acceptance_criteria": [
+        "Database schema deployed to dev environment with all tables, indexes, and constraints verified via migration scripts."
+      ],
+      "depends_on": [],
+      "wbs_id": "WBS-DB-001",
+      "priority": "Must Have",
+      "story_points": 3,
+      "effort_days": 2,
+      "req_id": "FR-001"
+    },
+    {
+      "id": "wbs_be_001",
+      "title": "Implement User Registration API with bcrypt hashing",
+      "description": "Create POST /api/auth/register endpoint. Validate email format and password strength. Hash password using bcrypt (salt factor >= 12) and store user in DB.",
+      "skill_required": "backend",
+      "acceptance_criteria": [
+        "API accepts valid registration data, stores hashed password, and returns 201 status; rejects duplicates and weak passwords."
+      ],
+      "depends_on": [
+        "wbs_db_001"
+      ],
+      "wbs_id": "WBS-BE-001",
+      "priority": "Must Have",
+      "story_points": 3,
+      "effort_days": 2,
+      "req_id": "FR-001"
+    },
+    {
+      "id": "wbs_be_002",
+      "title": "Implement User Login and JWT generation",
+      "description": "Create POST /api/auth/login endpoint. Verify credentials against bcrypt hash. Generate and return JWT token with user ID.",
+      "skill_required": "backend",
+      "acceptance_criteria": [
+        "Valid credentials return JWT token; invalid credentials return 401 error."
+      ],
+      "depends_on": [
+        "wbs_be_001"
+      ],
+      "wbs_id": "WBS-BE-002",
+      "priority": "Must Have",
+      "story_points": 2,
+      "effort_days": 1,
+      "req_id": "FR-002"
+    },
+    {
+      "id": "wbs_be_003",
+      "title": "Implement Password Reset flow with SendGrid",
+      "description": "Create endpoints for reset request and reset execution. Integrate SendGrid (INT-001) to send time-limited tokens. Validate token and update password with bcrypt.",
+      "skill_required": "backend",
+      "acceptance_criteria": [
+        "Reset email sent via SendGrid; token validation works; password updated securely; expired tokens rejected."
+      ],
+      "depends_on": [
+        "wbs_be_002"
+      ],
+      "wbs_id": "WBS-BE-003",
+      "priority": "Must Have",
+      "story_points": 5,
+      "effort_days": 3,
+      "req_id": "FR-003"
+    },
+    {
+      "id": "wbs_be_004",
+      "title": "Implement User Profile and S3 Avatar Upload",
+      "description": "Create GET/PUT /api/users/me endpoints. Integrate AWS S3 (INT-002) to generate pre-signed URLs for avatar upload. Store profile data.",
+      "skill_required": "backend",
+      "acceptance_criteria": [
+        "Profile data retrievable and updatable; avatar upload generates valid S3 pre-signed URL; file stored with private ACL."
+      ],
+      "depends_on": [
+        "wbs_be_002"
+      ],
+      "wbs_id": "WBS-BE-004",
+      "priority": "Must Have",
+      "story_points": 5,
+      "effort_days": 3,
+      "req_id": "FR-004"
+    },
+    {
+      "id": "wbs_be_005",
+      "title": "Implement Task CRUD and Completion endpoints",
+      "description": "Create POST, PUT, DELETE, PATCH endpoints for tasks. Enforce ownership checks. Store task details including due date and priority.",
+      "skill_required": "backend",
+      "acceptance_criteria": [
+        "Tasks created, updated, deleted, and marked complete only by owners; non-owners receive 403 error."
+      ],
+      "depends_on": [
+        "wbs_db_001"
+      ],
+      "wbs_id": "WBS-BE-005",
+      "priority": "Must Have",
+      "story_points": 5,
+      "effort_days": 3,
+      "req_id": "FR-005"
+    },
+    {
+      "id": "wbs_be_006",
+      "title": "Implement Task Filtering and Search logic",
+      "description": "Enhance GET /api/tasks to support query parameters for status, priority, date range, and text search on title/description.",
+      "skill_required": "backend",
+      "acceptance_criteria": [
+        "API returns tasks matching all provided filters; search is case-insensitive and partial."
+      ],
+      "depends_on": [
+        "wbs_be_005"
+      ],
+      "wbs_id": "WBS-BE-006",
+      "priority": "Should Have",
+      "story_points": 3,
+      "effort_days": 2,
+      "req_id": "FR-009"
+    },
+    {
+      "id": "wbs_be_007",
+      "title": "Implement Task Sharing and Collaboration endpoints",
+      "description": "Create POST /api/tasks/:id/share to link tasks to other users. Create POST /api/tasks/:id/comments for adding comments. Trigger notifications.",
+      "skill_required": "backend",
+      "acceptance_criteria": [
+        "Task shared successfully with recipient; comment added with timestamp; notification triggered."
+      ],
+      "depends_on": [
+        "wbs_be_005"
+      ],
+      "wbs_id": "WBS-BE-007",
+      "priority": "Should Have",
+      "story_points": 5,
+      "effort_days": 3,
+      "req_id": "FR-011"
+    },
+    {
+      "id": "wbs_be_008",
+      "title": "Implement Auth Middleware and Authorization Logic",
+      "description": "Create Express middleware to validate JWT tokens. Implement logic to check user ownership for task operations.",
+      "skill_required": "backend",
+      "acceptance_criteria": [
+        "Protected routes reject requests without valid token; unauthorized users cannot modify others' tasks."
+      ],
+      "depends_on": [
+        "wbs_be_002"
+      ],
+      "wbs_id": "WBS-BE-008",
+      "priority": "Must Have",
+      "story_points": 3,
+      "effort_days": 2,
+      "req_id": "FR-006"
+    },
+    {
+      "id": "wbs_fe_001",
+      "title": "Build Registration and Login Forms",
+      "description": "Create React components for user registration and login. Implement form validation and API integration for auth endpoints.",
+      "skill_required": "frontend",
+      "acceptance_criteria": [
+        "Forms submit data to backend; success redirects to dashboard; errors displayed for invalid input."
+      ],
+      "depends_on": [
+        "wbs_be_001"
+      ],
+      "wbs_id": "WBS-FE-001",
+      "priority": "Must Have",
+      "story_points": 5,
+      "effort_days": 3,
+      "req_id": "FR-001"
+    },
+    {
+      "id": "wbs_fe_002",
+      "title": "Build Password Reset UI",
+      "description": "Create UI for requesting password reset and entering new password. Integrate with backend reset endpoints.",
+      "skill_required": "frontend",
+      "acceptance_criteria": [
+        "User can request reset and set new password; success message shown upon completion."
+      ],
+      "depends_on": [
+        "wbs_be_003"
+      ],
+      "wbs_id": "WBS-FE-002",
+      "priority": "Must Have",
+      "story_points": 3,
+      "effort_days": 2,
+      "req_id": "FR-003"
+    },
+    {
+      "id": "wbs_fe_003",
+      "title": "Build User Profile and Avatar Upload",
+      "description": "Create profile view and edit form. Implement S3 pre-signed URL flow for avatar upload.",
+      "skill_required": "frontend",
+      "acceptance_criteria": [
+        "User can update name/preferences; avatar uploads to S3 and displays correctly."
+      ],
+      "depends_on": [
+        "wbs_be_004"
+      ],
+      "wbs_id": "WBS-FE-003",
+      "priority": "Must Have",
+      "story_points": 5,
+      "effort_days": 3,
+      "req_id": "FR-004"
+    },
+    {
+      "id": "wbs_fe_004",
+      "title": "Build Task List, Create, and Edit Views",
+      "description": "Create task list component with create/edit modals. Implement form fields for title, description, due date, priority.",
+      "skill_required": "frontend",
+      "acceptance_criteria": [
+        "Users can create, view, edit, and delete tasks; form validation prevents invalid data submission."
+      ],
+      "depends_on": [
+        "wbs_be_005"
+      ],
+      "wbs_id": "WBS-FE-004",
+      "priority": "Must Have",
+      "story_points": 8,
+      "effort_days": 4,
+      "req_id": "FR-005"
+    },
+    {
+      "id": "wbs_fe_005",
+      "title": "Implement Task Filtering and Search UI",
+      "description": "Add filter controls (status, priority, date) and search bar to task list. Update API calls with query params.",
+      "skill_required": "frontend",
+      "acceptance_criteria": [
+        "Filtering and searching update the task list dynamically; results match backend logic."
+      ],
+      "depends_on": [
+        "wbs_be_006"
+      ],
+      "wbs_id": "WBS-FE-005",
+      "priority": "Should Have",
+      "story_points": 3,
+      "effort_days": 2,
+      "req_id": "FR-009"
+    },
+    {
+      "id": "wbs_fe_006",
+      "title": "Build Task Sharing and Commenting UI",
+      "description": "Create share dialog to select users and comment section for tasks. Display shared tasks and comments.",
+      "skill_required": "frontend",
+      "acceptance_criteria": [
+        "Users can share tasks and add comments; shared tasks and comments render correctly."
+      ],
+      "depends_on": [
+        "wbs_be_007"
+      ],
+      "wbs_id": "WBS-FE-006",
+      "priority": "Should Have",
+      "story_points": 5,
+      "effort_days": 3,
+      "req_id": "FR-011"
+    },
+    {
+      "id": "wbs_qa_001",
+      "title": "Develop Unit Tests for Auth and User Services",
+      "description": "Write Jest tests for registration, login, password reset, and profile endpoints covering success and failure cases.",
+      "skill_required": "qa",
+      "acceptance_criteria": [
+        "All unit tests pass with >90% code coverage for auth modules."
+      ],
+      "depends_on": [
+        "wbs_be_003"
+      ],
+      "wbs_id": "WBS-QA-001",
+      "priority": "Must Have",
+      "story_points": 3,
+      "effort_days": 2,
+      "req_id": "FR-002"
+    },
+    {
+      "id": "wbs_qa_002",
+      "title": "Develop Integration Tests for Task and Collaboration",
+      "description": "Write integration tests for task CRUD, filtering, sharing, and commenting flows using test database.",
+      "skill_required": "qa",
+      "acceptance_criteria": [
+        "Integration tests pass for all task and collaboration endpoints."
+      ],
+      "depends_on": [
+        "wbs_be_007"
+      ],
+      "wbs_id": "WBS-QA-002",
+      "priority": "Must Have",
+      "story_points": 5,
+      "effort_days": 3,
+      "req_id": "FR-005"
+    },
+    {
+      "id": "wbs_qa_003",
+      "title": "Execute Performance and Security Testing",
+      "description": "Run load tests for 1000 concurrent users (NFR-001) and verify API response times (NFR-002). Verify bcrypt hashing and HTTPS (NFR-004, NFR-005).",
+      "skill_required": "qa",
+      "acceptance_criteria": [
+        "System handles 1000 users with <1% error rate; 95% of requests <200ms; security scan passes."
+      ],
+      "depends_on": [
+        "wbs_qa_002"
+      ],
+      "wbs_id": "WBS-QA-003",
+      "priority": "Must Have",
+      "story_points": 5,
+      "effort_days": 3,
+      "req_id": "NFR-001"
+    },
+    {
+      "id": "wbs_do_001",
+      "title": "Setup AWS Infrastructure and CI/CD Pipeline",
+      "description": "Configure EC2, RDS, S3, and SendGrid. Setup CI/CD pipeline for automated testing and deployment. Enforce HTTPS.",
+      "skill_required": "backend",
+      "acceptance_criteria": [
+        "Infrastructure provisioned; pipeline deploys code on commit; HTTPS enforced; uptime monitoring active."
+      ],
+      "depends_on": [],
+      "wbs_id": "WBS-DO-001",
+      "priority": "Must Have",
+      "story_points": 8,
+      "effort_days": 4,
+      "req_id": "NFR-003"
+    },
+    {
+      "id": "wbs_do_002",
+      "title": "Configure Database Migrations and Backups",
+      "description": "Set up automated migration scripts and daily backup strategy for PostgreSQL RDS instance.",
+      "skill_required": "backend",
+      "acceptance_criteria": [
+        "Migrations run automatically on deploy; backups verified and restorable."
+      ],
+      "depends_on": [
+        "wbs_db_001"
+      ],
+      "wbs_id": "WBS-DO-002",
+      "priority": "Must Have",
+      "story_points": 3,
+      "effort_days": 2,
+      "req_id": "NFR-003"
+    }
+  ]
+}

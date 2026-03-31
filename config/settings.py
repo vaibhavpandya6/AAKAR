@@ -27,6 +27,25 @@ class Settings(BaseSettings):
     llm_model: str = Field(default="llama-3.3-70b-versatile", alias="LLM_MODEL")
     llm_temperature: float = Field(default=0.0, alias="LLM_TEMPERATURE")
 
+    # NVIDIA API Configuration (for BRD-to-WBS pipeline)
+    nvidia_api_key: str = Field(
+        default="", alias="NVIDIA_API_KEY"
+    )
+    nvidia_base_url: str = Field(
+        default="https://integrate.api.nvidia.com/v1", alias="NVIDIA_BASE_URL"
+    )
+    # Using Nemotron-3-Super-120B for all stages (optimized for 39 RPM)
+    nvidia_model: str = Field(
+        default="nvidia/nemotron-3-super-120b-a12b", alias="NVIDIA_MODEL"
+    )
+    # SOW and Test models now use Nemotron by default (can override if needed)
+    nvidia_sow_model: str = Field(
+        default="nvidia/nemotron-3-super-120b-a12b", alias="NVIDIA_SOW_MODEL"
+    )
+    nvidia_test_model: str = Field(
+        default="nvidia/nemotron-3-super-120b-a12b", alias="NVIDIA_TEST_MODEL"
+    )
+
     # Database Configuration
     postgres_url: str = Field(
         default="postgresql+asyncpg://user:password@localhost:5432/aidevplatform",
